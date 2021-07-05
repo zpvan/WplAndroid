@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel target="1.8">
+      <module name="WplAndroid.aop" target="11" />
+      <module name="WplAndroid.app" target="11" />
+      <module name="WplAndroid.architecture" target="11" />
+      <module name="WplAndroid.autoadapter" target="11" />
+      <module name="WplAndroid.bytecode" target="11" />
+      <module name="WplAndroid.concurrency" target="11" />
+      <module name="WplAndroid.hotfix" target="11" />
+      <module name="WplAndroid.http" target="11" />
+      <module name="WplAndroid.leetcode" target="11" />
+      <module name="WplAndroid.memory" target="11" />
+      <module name="WplAndroid.myaspectj" target="11" />
+      <module name="WplAndroid.pattern" target="11" />
+      <module name="WplAndroid.player" target="11" />
+      <module name="WplAndroid.plugin" target="11" />
+      <module name="WplAndroid.reverse" target="11" />
+      <module name="WplAndroid.rpc" target="11" />
+    </bytecodeTargetLevel>
+  </component>
+</project>
