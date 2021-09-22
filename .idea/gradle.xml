@@ -4,13 +4,15 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
-        <option name="testRunner" value="PLATFORM" />
+        <option name="testRunner" value="GRADLE" />
         <option name="distributionType" value="DEFAULT_WRAPPED" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleHome" value="/usr/local/Cellar/gradle/6.0.1/libexec" />
+        <option name="gradleJvm" value="Android Studio java home" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/advancealgo" />
             <option value="$PROJECT_DIR$/aop" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/architecture" />
@@ -19,8 +21,14 @@
             <option value="$PROJECT_DIR$/autoadapter-processor" />
             <option value="$PROJECT_DIR$/bytecode" />
             <option value="$PROJECT_DIR$/concurrency" />
+            <option value="$PROJECT_DIR$/customview" />
             <option value="$PROJECT_DIR$/hotfix" />
             <option value="$PROJECT_DIR$/http" />
+            <option value="$PROJECT_DIR$/jobscheduler" />
+            <option value="$PROJECT_DIR$/jvm" />
+            <option value="$PROJECT_DIR$/ktaboutme" />
+            <option value="$PROJECT_DIR$/kthelloworld" />
+            <option value="$PROJECT_DIR$/leakcanary" />
             <option value="$PROJECT_DIR$/leetcode" />
             <option value="$PROJECT_DIR$/memory" />
             <option value="$PROJECT_DIR$/myaspectj" />
@@ -29,6 +37,7 @@
             <option value="$PROJECT_DIR$/plugin" />
             <option value="$PROJECT_DIR$/reverse" />
             <option value="$PROJECT_DIR$/rpc" />
+            <option value="$PROJECT_DIR$/security" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />
