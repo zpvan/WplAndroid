@@ -3,9 +3,14 @@ package com.knox.advancealgo.optm.operations.string;
 import org.junit.Test;
 
 import se.l4.exobytes.Serializer;
+
+import com.knox.advancealgo.optm.OpLogHelper;
 import com.knox.advancealgo.optm.operations.Operation;
 import com.knox.advancealgo.optm.operations.SerializerTestHelper;
 
+/**
+ * Serialization 序列化？跟传统的序列化有什么不同的呢？
+ */
 public class StringSerializationTest
 {
 	@Test
@@ -54,6 +59,7 @@ public class StringSerializationTest
 	{
 		StringType type = new StringType();
 		Serializer<Operation<StringHandler>> serializer = type.getSerializer();
+		OpLogHelper.e("test", op);
 		SerializerTestHelper.testSymmetry(serializer, op);
 	}
 

@@ -3,6 +3,7 @@ package com.knox.advancealgo.optm.engine;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import com.knox.advancealgo.optm.OpLogHelper;
 import com.knox.advancealgo.optm.common.lock.CloseableLock;
 import com.knox.advancealgo.optm.operations.Operation;
 import com.knox.advancealgo.optm.operations.string.StringDelta;
@@ -140,6 +141,8 @@ public class DefaultEditorTest
 		sync.resume();
 
 		sync.waitForEmpty();
+
+		OpLogHelper.e("testMultiple3", e1.getCurrent());
 
 		assertThat(e1.getCurrent(), is(StringDelta.builder()
 			.insert("Hello Cookies!!")

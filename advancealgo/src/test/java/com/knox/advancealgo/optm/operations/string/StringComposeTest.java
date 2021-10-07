@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
+import com.knox.advancealgo.optm.OpLogHelper;
 import com.knox.advancealgo.optm.operations.ComposeException;
 import com.knox.advancealgo.optm.operations.Operation;
 
@@ -94,6 +95,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test4 ", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.insert("Hello ")
@@ -125,6 +127,9 @@ public class StringComposeTest
 		);
 	}
 
+    /**
+     * retain 该如何理解？
+     */
 	@Test
 	public void testCompose6()
 	{
@@ -134,17 +139,20 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> op2 = StringDelta.builder()
-			.delete("Cookie")
-			.retain(5)
+            .retain(5)
+            .delete("Cookie")
+			.retain(1)
 			.done();
 
 		try
 		{
 			Operation<StringHandler> o = compose(op1, op2);
+			OpLogHelper.e("test6 ", op1, op2, o);
 			fail("Should not be composable, but got " + o);
 		}
 		catch(ComposeException e)
 		{
+            e.printStackTrace();
 		}
 	}
 
@@ -162,6 +170,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test7", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.insert("Hello !Cookie")
@@ -183,6 +192,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test8", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.insert("Cookie")
@@ -207,6 +217,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test9", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.insert("Hello Cookies!")
@@ -214,6 +225,9 @@ public class StringComposeTest
 		));
 	}
 
+	/**
+	 * Annotation 该如何理解？
+	 */
 	@Test
 	public void testCompose10()
 	{
@@ -233,6 +247,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test10", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.insert("Hello ")
@@ -270,6 +285,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test11", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.insert("Hello World")
@@ -324,6 +340,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test14", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.insert("Hey. Hello ")
@@ -364,6 +381,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test15", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.retain(4)
@@ -408,6 +426,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test16", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.retain(4)
@@ -452,6 +471,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test17", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.retain(1)
@@ -499,6 +519,7 @@ public class StringComposeTest
 			.done();
 
 		Operation<StringHandler> r = compose(op1, op2);
+		OpLogHelper.e("test18", op1, op2, r);
 
 		assertThat(r, is(StringDelta.builder()
 			.retain(1)
@@ -545,6 +566,8 @@ public class StringComposeTest
 			.retain(11)
 			.done();
 
+		Operation<StringHandler> r = compose(op1, op2);
+
 		Operation<StringHandler> expected = StringDelta.builder()
 			.retain(2)
 			.updateAnnotations()
@@ -560,8 +583,9 @@ public class StringComposeTest
 				.done()
 			.retain(11)
 			.done();
+		OpLogHelper.e("test19", op1, op2, r, expected);
 
-		assertThat(compose(op1, op2), is(expected));
+		assertThat(r, is(expected));
 	}
 
 
@@ -592,6 +616,8 @@ public class StringComposeTest
 			.retain(14)
 			.done();
 
+		Operation<StringHandler> r = compose(op1, op2);
+
 		Operation<StringHandler> expected = StringDelta.builder()
 			.retain(2)
 			.updateAnnotations()
@@ -607,8 +633,9 @@ public class StringComposeTest
 				.done()
 			.retain(11)
 			.done();
+		OpLogHelper.e("test20", op1, op2, r, expected);
 
-		assertThat(compose(op1, op2), is(expected));
+		assertThat(r, is(expected));
 	}
 
 	@Test
@@ -624,13 +651,17 @@ public class StringComposeTest
 			.retain(1)
 			.done();
 
+		Operation<StringHandler> r = compose(op1, op2);
+
 		Operation<StringHandler> expected = StringDelta.builder()
 			.insert("a")
 			.retain(1)
 			.delete("a")
 			.done();
 
-		assertThat(compose(op1, op2), is(expected));
+		OpLogHelper.e("test21", op1, op2, r, expected);
+
+		assertThat(r, is(expected));
 	}
 
 	@Test

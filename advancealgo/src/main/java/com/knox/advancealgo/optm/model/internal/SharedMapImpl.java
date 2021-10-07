@@ -13,7 +13,6 @@ import com.knox.advancealgo.optm.operations.map.MapHandler;
 import java.util.HashMap;
 import java.util.Map;
 
-
 public class SharedMapImpl
 	extends AbstractSharedObject<Operation<MapHandler>>
 	implements SharedMap

@@ -2,7 +2,6 @@ package com.knox.advancealgo.optm.model;
 
 import com.knox.advancealgo.optm.common.lock.CloseableLock;
 import com.knox.advancealgo.optm.engine.Editor;
-import com.knox.advancealgo.optm.common.lock.CloseableLock;
 import com.knox.advancealgo.optm.model.internal.DefaultModelBuilder;
 import com.knox.advancealgo.optm.operations.Operation;
 import com.knox.advancealgo.optm.operations.combined.CombinedDelta;

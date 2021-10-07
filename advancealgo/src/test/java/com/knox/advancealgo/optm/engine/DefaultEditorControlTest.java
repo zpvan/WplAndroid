@@ -3,6 +3,7 @@ package com.knox.advancealgo.optm.engine;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import com.knox.advancealgo.optm.OpLogHelper;
 import com.knox.advancealgo.optm.operations.Operation;
 import com.knox.advancealgo.optm.operations.string.StringDelta;
 import com.knox.advancealgo.optm.operations.string.StringHandler;
@@ -48,6 +49,9 @@ public class DefaultEditorControlTest
 		);
 
 		TaggedOperation<Operation<StringHandler>> latest = control.getLatest();
+		/**
+		 * Editor的断言，判断的是low-level api，如果应用呢？
+		 */
 		assertThat(latest.getOperation(), is(StringDelta.builder()
 			.insert("Hello Cookie")
 			.done()
@@ -72,6 +76,9 @@ public class DefaultEditorControlTest
 		);
 
 		TaggedOperation<Operation<StringHandler>> latest = control.getLatest();
+
+		OpLogHelper.e("testEditsFromSameHistoryId", latest.getOperation());
+
 		assertThat(latest.getOperation(), is(StringDelta.builder()
 			.insert("Hello Cookie!")
 			.done()

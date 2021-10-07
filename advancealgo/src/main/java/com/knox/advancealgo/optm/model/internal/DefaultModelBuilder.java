@@ -14,7 +14,6 @@ import java.util.Map;
 
 import com.knox.advancealgo.optm.engine.Editor;
 
-
 public class DefaultModelBuilder
 	implements ModelBuilder
 {

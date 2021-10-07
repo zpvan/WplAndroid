@@ -5,31 +5,34 @@ import static org.junit.Assert.assertThat;
 
 import org.junit.Test;
 
+import com.knox.advancealgo.optm.OpLogHelper;
 import com.knox.advancealgo.optm.operations.Operation;
 import com.knox.advancealgo.optm.operations.OperationPair;
 
 public class StringTransformTest
 {
+	/**
+	 * 这个test的目的是啥？
+	 */
 	@Test
 	public void testInsertionBeforeRight()
 	{
-		reversibleTest(
-			insert(20, 1, "a"),
-			insert(20, 2, "1"),
-			insert(21, 1, "a"),
-			insert(21, 3, "1")
-		);
+		Operation<StringHandler> client = insert(20, 1, "a");
+		Operation<StringHandler> server = insert(20, 2, "1");
+		Operation<StringHandler> expectedClient = insert(21, 1, "a");
+		Operation<StringHandler> expectedServer = insert(21, 3, "1");
+		OpLogHelper.e("testInsertionBeforeRight", client, server, expectedClient, expectedServer);
+		reversibleTest(client, server, expectedClient, expectedServer);
 	}
 
 	@Test
 	public void testInsertionAtSameLocation()
 	{
-		test(
-			insert(20, 2, "abc"),
-			insert(20, 2, "123"),
-			insert(23, 2, "abc"),
-			insert(23, 5, "123")
-		);
+		Operation<StringHandler> client = insert(20, 2, "abc");
+		Operation<StringHandler> server = insert(20, 2, "123");
+		Operation<StringHandler> expectedClient = insert(23, 2, "abc");
+		Operation<StringHandler> expectedServer = insert(23, 5, "123");
+		test(client, server, expectedClient, expectedServer);
 	}
 
 	@Test
@@ -407,10 +410,13 @@ public class StringTransformTest
 
 		// Sanity check the test - needs to be composable
 		Operation<StringHandler> cLeft = type.compose(left, expectedRight);
+		OpLogHelper.e("doCompose", left, expectedRight, cLeft);
 		Operation<StringHandler> rLeft = type.compose(right, expectedLeft);
+		OpLogHelper.e("doCompose", right, expectedLeft, rLeft);
 		assertThat("composed", cLeft, is(rLeft));
 
 		OperationPair<Operation<StringHandler>> op = type.transform(left, right);
+		OpLogHelper.e("doTransform", left, right, op.getLeft(), op.getRight());
 
 		// Then check that the values are what we expect
 		assertThat("left", op.getLeft(), is(expectedLeft));
