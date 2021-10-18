@@ -1,13 +1,14 @@
 package com.knox.leetcode.queue;
 
-public class CircularQueue {
+// 基于数组实现环形队列
+public class MyCircularQueue {
     private String[] items;     // 数组
     private int      n    = 0;  // 队列的大小
     private int      head = 0;  // 队头下标
     private int      tail = 0;  // 队尾下标
 
     // 初始化数组，申请一个大小为n的数组空间
-    public CircularQueue(int n) {
+    public MyCircularQueue(int n) {
         this.items = new String[n];
         this.n = n;
     }

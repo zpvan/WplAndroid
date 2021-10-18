@@ -1,6 +1,6 @@
 package com.knox.leetcode.sort;
 
-public class InsertionSort {
+public class MyInsertionSort {
 
     public static void insertionSort(int[] a, int n) {
         if (n <= 1) {

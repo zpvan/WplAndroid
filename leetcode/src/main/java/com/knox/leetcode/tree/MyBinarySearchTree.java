@@ -1,6 +1,6 @@
 package com.knox.leetcode.tree;
 
-public class BinarySearchTree {
+public class MyBinarySearchTree {
     private Node tree;
 
     public Node find(int data) {

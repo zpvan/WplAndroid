@@ -1,6 +1,6 @@
 package com.knox.leetcode.sort;
 
-public class BubbleSort {
+public class MyBubbleSort {
 
     // 冒泡排序，a表示数组，n表示数组大小
     public static void bubbleSort(int[] a, int n) {

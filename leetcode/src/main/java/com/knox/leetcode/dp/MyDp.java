@@ -1,15 +1,8 @@
-package com.knox.leetcode.number;
+package com.knox.leetcode.dp;
 
-import org.junit.Test;
+public class MyDp {
 
-public class Test5 {
-
-    @Test
-    public void test() {
-
-    }
-
-    public String longestPalindrome(String s) {
+    public static String longestPalindrome(String s) {
         int length = s.length();
         if (length == 0) {
             return "";
@@ -21,7 +14,7 @@ public class Test5 {
         }
 
         int begin = 0;
-        int maxLength = 0;
+        int maxLength = 1;
         char[] ca = s.toCharArray();
         for (int l = 2; l <= length; l++) {
             for (int i = 0; i < length; i++) {

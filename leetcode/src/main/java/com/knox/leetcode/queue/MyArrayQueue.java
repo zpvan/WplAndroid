@@ -1,14 +1,14 @@
 package com.knox.leetcode.queue;
 
 // 用数组实现的队列
-public class ArrayQueue {
+public class MyArrayQueue {
     private String[] items;     // 数组
     private int      n    = 0;  // 队列的大小
     private int      head = 0;  // 队头下标
     private int      tail = 0;  // 队尾下标
 
     // 初始化数组，申请一个大小为n的数组空间
-    public ArrayQueue(int n) {
+    public MyArrayQueue(int n) {
         this.items = new String[n];
         this.n = n;
     }

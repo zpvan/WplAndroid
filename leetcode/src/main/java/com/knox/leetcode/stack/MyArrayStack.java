@@ -1,13 +1,13 @@
 package com.knox.leetcode.stack;
 
 // 基于数组实现的顺序栈
-public class ArrayStack {
+public class MyArrayStack {
     private String[] items; // 数组
     private int      count; // 栈中元素个数
     private int      n = 0; // 栈的大小
 
     // 初始化数组，申请一个大小为n的数组空间
-    public ArrayStack(int n) {
+    public MyArrayStack(int n) {
         System.nanoTime();
         this.items = new String[n];
         this.n = n;

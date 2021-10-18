@@ -2,9 +2,6 @@ package com.knox.leetcode.number;
 
 import org.junit.Test;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-
 public class Test1021 {
 
     @Test

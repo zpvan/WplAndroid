@@ -2,9 +2,9 @@ package com.knox.leetcode.tree;
 
 import android.util.Log;
 
-public class BinaryTree {
+public class MyBinaryTree {
 
-    private static final String TAG = BinaryTree.class.getName();
+    private static final String TAG = MyBinaryTree.class.getName();
 
     // 二叉树
     public Node root;

@@ -1,7 +1,7 @@
 package com.knox.leetcode.tree;
 
 // 大顶堆
-public class Heap {
+public class MyHeap {
     // 数组，从下标1开始存储数据
     private int[] a;
     // 堆可以存储的最大数据个数
@@ -9,7 +9,7 @@ public class Heap {
     // 堆已经存储的数据个数
     private int   count;
 
-    public Heap(int capacity) {
+    public MyHeap(int capacity) {
         a = new int[capacity + 1];
         n = capacity;
         count = 0;

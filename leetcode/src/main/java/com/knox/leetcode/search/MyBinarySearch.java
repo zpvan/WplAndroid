@@ -1,6 +1,6 @@
 package com.knox.leetcode.search;
 
-public class BinarySearch {
+public class MyBinarySearch {
     public int bsearch(int[] a, int n, int value) {
         // 非递归
         int low = 0;
