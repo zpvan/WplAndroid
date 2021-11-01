@@ -47,12 +47,22 @@ public class Test638 {
     			minPrice += needs.get(i) * price.get(i);
 			}
     		for (List<Integer> sp : special) {
+				List<Integer> nextNeeds = new ArrayList<>();
     			// 该大礼包的总价
 				int specialPrice = sp.get(n);
 				for (int i = 0; i < n; i++) {
-					
+					if (sp.get(i) > needs.get(i)) {
+						// 不能购买该大礼包, 因为商品数量超了
+						break;
+					}
+					nextNeeds.add(needs.get(i) - sp.get(i));
+				}
+				if (nextNeeds.size() == n) {
+					// 上面for循环没有break
+					minPrice = Math.min(minPrice, _dfs(price, special, nextNeeds, n) + sp.get(n));
 				}
 			}
+    		mem.put(needs, minPrice);
 		}
     	return mem.get(needs);
 	}
