@@ -38,6 +38,7 @@
             <option value="$PROJECT_DIR$/reverse" />
             <option value="$PROJECT_DIR$/rpc" />
             <option value="$PROJECT_DIR$/security" />
+            <option value="$PROJECT_DIR$/wan" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />

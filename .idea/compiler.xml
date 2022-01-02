@@ -26,6 +26,7 @@
       <module name="WplAndroid.reverse" target="16" />
       <module name="WplAndroid.rpc" target="16" />
       <module name="WplAndroid.security" target="16" />
+      <module name="WplAndroid.wan" target="16" />
     </bytecodeTargetLevel>
   </component>
 </project>
