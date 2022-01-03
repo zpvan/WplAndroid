@@ -324,13 +324,266 @@ Final note: While writing this blog post, I noticed a "status" byte that is incl
 
 
 
+# Who Can Find My Devices
+
+**Security and Privacy of Apple’s Crowd-Sourced Bluetooth Location Tracking System**
 
 
 
+## Abstract
+
+Overnight, Apple has turned its hundreds-of- million-device ecosystem into the world’s largest crowd- sourced location tracking network called offline finding (OF). OF leverages online finder devices to detect the presence of missing offline devices using Bluetooth and report an approximate location back to the owner via the Internet. While OF is not the first system of its kind, it is the first to commit to strong privacy goals. In particular, OF aims to ensure finder anonymity, un- trackability of owner devices, and confidentiality of location reports. This paper presents the first comprehensive security and privacy analysis of OF. To this end, we recover the specifications of the closed-source OF protocols by means of reverse engineering. We experimentally show that unauthorized access to the location reports allows for accurate device tracking and retrieving a user’s top locations with an error in the order of 10 meters in urban areas. While we find that OF’s design achieves its privacy goals, we discover two distinct design and implementation flaws that can lead to a location correlation attack and unauthorized access to the location history of the past seven days, which could deanonymize users. Apple has partially addressed the issues following our responsible disclosure. Finally, we make our research artifacts publicly available.
+
+一夜之间，Apple将其数以亿计的设备生态系统变成了世界上最大的Crowd-sourced位置跟踪网络，叫做offline finding（OF）。OF利用online finder devices的蓝牙去探测missing offline devices的存在，并通过Internet将大致位置报告给owner。虽然OF不是第一个这种类型的系统，但她却是第一以实现强隐私为目标的这类系统。特别的，OF旨在确保finder的匿名性，owner devices的不可追踪性，位置报告的机密性。本论文对OF做一次全面的安全和隐私分析。为此，我们通过逆向工程技术恢复了闭源协议OF的spec。We experimentally show that unauthorized access to the location reports allows for accurate device tracking and retrieving a user’s top locations with an error in the order of 10 meters in urban areas. 虽然我们证明了OF的设计实现了她的隐私目标，但是我们也发现了两点不同的设计和实现上的flaws，她们可能造成位置关联攻击和过去7天的位置报告的未授权访问，可能造成去匿名化。紧跟我们负责人的曝光，Apple已经修复了其中一些issue。最后，我们公开我们的research artifaces。
 
 
 
+## Introduction
+
+In 2019, Apple introduced *offline finding (OF)*, a proprietary crowd-sourced location tracking system for offline devices. The basic idea behind OF is that so-called *finder* devices can detect the presence of other *lost* offline devices using Bluetooth Low Energy (BLE) and use their Internet connection to report an approximate location back to the *owner*. Apple’s OF network consists of “hundreds of millions” of devices [4], making it the currently largest crowd-sourced location tracking system in existence. We expect the network to grow as OF will officially support the tracking of non-Apple devices in the future [6]. Regardless of its size, the system has sparked considerable interest and discussion within the broader tech and security communities [28, 29] as Apple makes strong security and privacy claims supported by new cryptographic primitives that other commercial systems are lacking [51]. In particular, Apple claims that it cannot access location reports, finder identities are not revealed, and BLE advertisements cannot be used to track devices [35]. Apple has yet to provide ample proof for their claims as, until today, only selected components have been publicized [4, 6, 35].
+
+早在2019年，Apple介绍了私有的offline finding（OF），一款针对offline devices的自研的crowd-sourced位置追踪系统。OF背后的基本思想：finder devices利用BLE技术探测其他人lost offline devices，并使用自己的Internet连接上报粗略位置的报告给owner。Apple的OF network由上亿的设备组成，也是目前最大的crowd-sourced位置追踪系统。我们预期网络将进一步壮大，因为OF未来将官方支持non-Apple devices。无论其规模如何，OF系统已经在broader技术和安全社区中sparked considerable兴趣和讨论，因为Apple作出了强安全和隐私声明（由新的cryptographic primitives支持，这是其他商业系统所缺少的）。特别的，Apple表示她自己无法访问位置报告，finder devices的身份也无法被透露，且BLE广播也无法被用来追踪。当然，Apple还没为她的声明提供ample证据，只有选择性地公开其中的组件。
 
 
 
+### Contribution
 
+意义与价值
+
+This paper challenges Apple’s security and privacy claims and examines the system design and implementation for vulnerabilities. To this end, we first analyze the involved OF system components on macOS and iOS using reverse engineering and present the proprietary protocols involved during *losing*, *searching*, and *finding* devices. In short, devices of one owner agree on a set of so-called rolling public–private key pairs. Devices without an Internet connection, i.e., without cellular or Wi-Fi connectivity, emit BLE advertisements that encode one of the rolling public keys. Finder devices overhearing the advertisements encrypt their current location under the rolling public key and send the location report to a central Apple-run server. When searching for a lost device, another owner device queries the central server for location reports with a set of known rolling public keys of the lost device. The owner can decrypt the reports using the corresponding private key and retrieve the location.
+
+论文挑战Apple的安全隐私声明，且试验OF系统设计与实现的漏洞。为此，我们首先对macOS和iOS中OF相关模块进行逆向分析，展示在losting，searching和finding三个场景中的Apple自研协议。简而言之，owner与其拥有的devices会协商出一组rolling public-private 密钥对。没有Internet连接的Devices，譬如缺少蜂窝网络与Wifi网络的设备，会发射携带rolling public密钥的BLE广播。监听BLE广播的Finder devices利用rolling public key加密自身的位置信息上传到Apple Server。Search lost devices时，想要位置报告的owner device向Apple Server发送携带一组rolling public key的请求。只有owner device能够解密和解析这些位置报告，因为只有她有对应的私钥。
+
+
+
+Based on our analysis, we assess the security and privacy of the OF system. We find that the overall design achieves Apple’s specific goals. However, we discovered two distinct design and implementation vulnerabilities that seem to be outside of Apple’s threat model but can have severe consequences for the users. First, the OF design allows Apple to correlate different owners’ locations if their locations are reported by the same finder, effectively allowing Apple to construct a social graph. Second, malicious macOS applications can retrieve and decrypt the OF location reports of the last seven days for all its users and for *all* of their devices as cached rolling advertisement keys are stored on the file system in cleartext. We demonstrate that the latter vulnerability is exploitable and verify that the accuracy of the retrieved reports—in fact—allows the attacker to locate and identify their victim with high accuracy. We have shared our findings with Apple via responsible disclosure, who have meanwhile fixed one issue via an OS update (CVE-2020-9986, cf. *Responsible Disclosure* section for details). We summarize our key contributions.
+
+基于我们的分析，我们评估OF system的安全性和隐私性。我们说OF系统的整体设计实现了Apple特定的目标。然而，我们发现两处不同的设计实现漏洞，这些漏洞似乎be outside of Apple的威胁模型，但对用户会造成严重后果。
+
+* 第一，OF的设计是允许Apple关联不同owner的位置的，如果他们被同一个finder device上报信息，Apple能高效地构建社交图谱。
+* 第二，macOS的恶意程序能够检索和解密用户7天内的位置报告，因为rolling private-key会以明文的形式缓存在文件系统中。
+
+我们demonstrate了后一个漏洞是可被利用的，也验证了被索引出的报告的准确性。事实上，这允许了攻击者可高精准地追踪和识别受害者。我们已经向Apple分享了我们的调查结果，与此同时，Apple通过系统升级已经修复了一个issue。我们总结关键的contributions。
+
+* We provide a comprehensive specification of the OF protocol components for losing, searching, and finding devices. Our PoC （Proof of Concept）implementation allows for tracking non-Apple devices via Apple’s OF network.
+
+  提供了OF系统全面的spec，包括losing，searching和finding场景。理论上证明了我们可以利用OF系统来追踪non-Apple设备。
+
+* We experimentally evaluate the accuracy of real-world location reports for different forms of mobility (by car, train, and on foot). We show that (1) a walking user’s path can be tracked with a mean error of less than 30m in a metropolitan area and (2) the top locations of a user such as home and workplace can be inferred reliably and precisely (error in the order of 10 m) from a one-week location trace.
+
+  我们通过实验评估出不同形式的移动（汽车、火车、步行）在真实世界中位置报告的准确度。我们展示两个结果：1、在metropolitan区域中能以小于30米的误差追踪一个步行路径。2、根据过去1周内最高的位置频率能推断出用户的住所或公司，误差大约在10米。
+
+- We discover a design flaw in OF that lets Apple correlate the location of multiple owners if the same finder submits the reports. This would jeopardize location privacy for all other owners if only a single location became known.
+
+  设计缺陷：同一个finder上传的报告会关联多个用户，只要知道其中一个位置，则会暴露其他用户的位置信息。
+
+- We discover that a local application on macOS can effectively circumvent Apple’s restrictive location API [5] and access the user’s location history without their consent, allowing for device tracking and user identification.
+
+  macOS的程序可高效地circumvent Apple的location API的限制，缺乏用户同意的情况下访问用户的历史位置信息，对设备进行追踪和用户识别。
+
+- We open-source our PoC implementation and experimental data (cf. *Availability* section).
+
+  我们开源了我们的实现和实验数据。
+
+
+
+### Outline
+
+* Chapter-2 & Chapter-3 provide background information about OF and the involved technology.
+* Chapter-4 outlines our adversary model.
+* Chapter-5 summarizes our reverse engineering methodology.
+* Chapter-6 describes the OF protocols and components in detail.
+* Chapter-7 evaluates the accuracy of OF location reports.
+* Chapter-8 assesses the security and privacy of Apple’s OF design and implementation.
+* Chapter-9 & Chapter-10 report two discovered vulnerabilities and propose our mitigations.
+* Chapter-11 reviews related work.
+* Chapter-12 concludes this work.
+
+
+
+## Background
+
+This section gives a brief introduction to BLE and elliptic curve cryptography (ECC) as they are the basic building blocks for OF. We then cover relevant Apple platform internals.
+
+对BLE技术和椭圆曲线密码技术进行简单说明，因为他们是构建OF系统的基础。然后对Apple平台相关的内部模块进行说明。
+
+### Bluetooth Low Energy
+
+Bluetooth Low Energy (BLE) [19] is designed for small battery-powered devices such as smartwatches and fitness trackers with low data rates. Devices can broadcast BLE advertisements to inform nearby devices about their presence. The maximum BLE advertisement payload size is 31 bytes [19]. Apple heavily relies on custom BLE advertisements to announce their proprietary services such as AirDrop and bootstrap their protocols over Wi-Fi or Apple Wireless Direct Link (AWDL) [21, 36, 48]. OF devices also use BLE advertisements to inform nearby finders about their presence [6].
+
+### Elliptic Curve Cryptography
+
+OF employs elliptic curve cryptography (ECC) for encrypting location reports. ECC is a public-key encryption scheme that uses operations on elliptic curve (EC) over finite fields. An EC is a curve over a finite field that contains a known generator (or base point) G. A private key in ECC is a random number in the finite field of the used curve. The public key is the result of the point multiplication of the generator G with the private key. The result is an X–Y coordinate on the curve. The NIST P-224 curve [39], which is used by OF [6], provides a security level of 112 bit.
+
+OF系统运用了ECC算法加密位置报告。ECC是一种公钥密码技术that uses operations on elliptic curve (EC) over finite fields. An EC is a curve over a finite field that contains a known generator (or base point) G. A private key in ECC is a random number in the finite field of the used curve. The public key is the result of the point multiplication of the generator G with the private key. The result is an X–Y coordinate on the curve. The NIST P-224 curve, which is used by OF, provides a security level of 112 bit.
+
+### Apple Platform Internals
+
+We briefly introduce the terms keychain and iCloud as they are relevant for Apple’s OF implementation.
+
+#### Keychain
+
+All Apple operating systems (OSs) use a keychain as a database to store secrets such as passwords, keys, and trusted Transport Layer Security (TLS) root certificates. The keychain is used by sys- tem services such as AirDrop [48] and third-party ap- plications to store login information, tokens, and other secrets. Every keychain item may contain a *keychain access group*. This group is used to identify which ap- plication can access which keychain items. Access poli- cies are implemented via *entitlement* files embedded into signed application binaries. A system process prevents the execution of processes with unauthorized entitle- ments, e.g., a third-party application trying to access a system-owned keychain item. This security mechanism can be disabled on jailbroken iOS devices or by deacti- vating macOS system integrity protection (SIP), which helps extracting keys and secrets used by Apple’s sys- tem services.
+
+#### iCloud
+
+iCloud is an umbrella term for all Apple services handling online data storage and synchroniza- tion via Apple’s servers. All *owner* devices signed in to the same Apple account can synchronize themselves via iCloud. OF uses the iCloud keychain to share rolling advertisement keys across all owner devices. The syn- chronization is required to retrieve and decrypt the lo- cation reports from potential finders on any of the owner devices [4, 35].
+
+
+
+## Apple Offline Finding Overview
+
+Apple introduced OF in 2019 for iOS 13, macOS 10.15, and watchOS 6 [10]. OF enables locating Apple devices without an Internet connection and promises to operate in a privacy-preserving manner. In 2020, Apple announced to support third-party BLE-enabled devices to be tracked by the OF network [11] and released a protocol specification for their integration [6]. We found that this public specification is incomplete concerning the overall OF system. Within this paper, we focus on our recovered specification that was partly validated by the accessory specification [6].
+
+2019年，Apple推出OF系统。OF能够在没联网的情况下追踪Apple设备，并承诺以保护隐私的方式运行。2020年，Apple宣布OF支持追踪三方BLE设备，并为他们提供了协议spec。我们发现这个公开的spec对于整个OF系统来说是不完全的。本论文中，我们专注于复原能经受accessory_spec（Find_My_network_accessory_protocol_specification）验证的OF_whole_spec。
+
+In the following, we give a brief overview of how OF works and introduce the different roles of devices. Fig. 1 depicts the interplay of the roles and protocols involved in OF. 
+
+<img src="find_my_1_overview.png">
+
+In particular, OF involves (1) initial pairing of owner devices, (2) broadcasting BLE advertisements that contain a rolling public key, (3) uploading encrypted location reports to Apple’s servers, and (4) retrieving the location reports on owner devices. The terminology of the roles below has been derived from the official documentation [6].
+
+上图主要介绍了OF系统的工作流程，涉及四类角色与四种协议
+
+Roles（Owner device，Lost device，Finder device，Backend server）
+
+Protocol（Initial Pairing，Broadcasting BLE Adv，uploading & encrypt，retrieving & decrypt）
+
+**Owner devices.** Owner devices share a common Apple ID and can use the *Find My* application on macOS and iOS to search for any devices of the same owner.
+
+**Lost devices.** Devices that determine to be in a lost state start sending out BLE advertisements with a public key to be discovered by finder devices. Apple devices are considered to be lost when they lose Internet connectivity. Third-party accessories [6] are small battery- powered devices that can be attached to a personal item and are set up through an owner device. Accessories determine to be *lost* when they lose their BLE connection to the owner device.
+
+**Finder devices.** Finder devices form the core of the OF network. As of 2020, only iPhones and iPads with a GPS module are offering finder capabilities. Finder devices can discover lost devices and accessories by scanning for BLE advertisements. Upon receiving an OF advertisement, a finder creates an end-to-end encrypted location report that includes its current location and sends it to Apple’s servers.
+
+**Apple’s servers.** Apple’s servers store OF location reports submitted by finder devices. Owner devices can fetch those reports and decrypt them locally.
+
+
+
+## Adversary Model
+
+对抗模型
+
+OF exposes several interfaces that might be targeted by attackers. In this section, we identify these potentially vulnerable interfaces and devise a comprehensive adversary model that will guide the rest of this paper. We first detail the four sub-models, summarized in Tab. 1, and we specify them by their assumptions, goals, and capabilities following [23]. Then, we motivate the subsequent analysis of OF protocols and components based on these models.
+
+OF暴露几个接口可能会成为攻击的目标。本章，我们确定了这些潜在的易受攻击的接口，并设计了全面的对抗模型来指导我们的分析。我们首先细化四个子模型并通过假设、目标和能力来分类他们。后续基于模型来进行对OF协议和组件的分析。模型具体描述如下表：
+
+| Model                       | Assumptions                                                  | Goals                                                        | Capabilities                                                 |
+| --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Local application**（A1）** | (1) User-installed application on lost/owner devices that is either reviewed or notarized. <br />(2) Zero-permission. <br />(3) No privilege escalation exploits. | (1) Apple as the service provider. <br />(2) Controls the OF server infrastructure. | (1) Communicate with any server over the Internet. <br />(2) Read/write files that are accessible by the user and not restricted through sandboxing. |
+| Proximity-based**（A2）**   | (1) In BLE communication range of OF device. <br />(2) Control one or more BLE transceivers to cover a larger area. | (1) Access location of lost devices or personally linkable data. <br />(2) Track lost devices in larger areas (e.g., shopping center or airport). <br />(3) DoS against OF service. | (1) Track devices based on advertisement content. <br />(2) Record and replay advertisements at different locations. <br />(3) Fabricate new adver- tisements. |
+| Network-based **（A3）**    | (1) MitM position between Apple and OF devices. <br />(2) Cannot break TLS. | (1) Access location of reported lost devices. <br />(2) Identify reported devices. <br />(3) Identify lost devices. | (1) Redirect traffic to a different host. <br />(2) Read, intercept, redirect, or modify traffic. |
+| Service operator **（A4）** | (1) Apple as the service provider. <br />(2) Controls the OF server infrastructure. | (1) Locate individuals and their lost devices. <br />(2) Correlate locations to create a social graph. | (1) Access to all encrypted OF re- ports and their metadata. <br />(2) Add, remove, or modify reports. |
+
+
+
+First of all, we consider adversaries on either of OF’s communication channels (cf. (2)–(4) in Fig. 1). In particular, a proximity-based adversary has access to BLE advertisements **(A2)**, and a network-based adversary can modify traffic between OF devices and Apple’s servers **(A3)**. Also, we consider a zero-permission application running with user privileges on an owner/lost device that wants to infer the user’s current location. The application may be distributed inside or outside1 of Ap- ple’s official app stores **(A1)**. Finally, we also consider Apple as the service operator as an adversary that has access to all encrypted location reports and might try to infer any information based on the report metadata such as submission times and finder identifiers **(A4)**. Note that Apple uses its iCloud keychain service for initial device pairing and key synchronization (cf. (1) in Fig. 1). Apple provides detailed information about its keychain [4], which appears to withstand professional forensics analyses [1]. Therefore, we assume that the pairing process is secure throughout this paper.
+
+首先我们会思考对抗会存在于OF的交互通道（也就是2~4步骤 in Fig.1）。特别的，promixity-based对抗能够访问BLE广播**（A2）**。network-based对抗能够修改OF devices与Apple's Server之间的traffic**（A3）**。运行在owner/lost device中的zero-permission应用希望推断出用户目前的位置**（A1）**。Apple Server提供的服务存在一种Service operator对抗，能够访问所有的加密位置报告，根据报告的Metadata（譬如上传时间或者finder identifiers）可以尝试推断一些有意义的消息**（A4）**。Apple使用她的keychain服务做initial pairing和key synchronization。Apple提供了与keychain相关的细节，经受起专业的forensics分析。因此，我们假设pairing过程是绝对安全的。
+
+To conduct a security and privacy analysis based on these models, we need to understand OF in detail. To this end, we reverse engineer the protocols involved in loosing, finding, and searching devices (cf. (2)–(4) in Fig. 1) in § 6. Based on our understanding of OF, we conduct a security and privacy analysis of the BLE communication **(A2)**, the server communication **(A3)**, and storage of encrypted reports and cryptographic keys **(A1/A4)** in § 8.
+
+为了进行一场基于这些模型的安全和隐私分析，我们需要充分了解OF，包括细节。为此，我们对涉及loosing、finding和searching设备的协议进行逆向。然后基于我们对OF的理解，我们进行安全性与隐私性的分析。包括以下几点：
+
+* BLE Communication**（A2）**
+* Server Communication**（A3）**
+* storage of encrypted reports and cryptographic keys **（A1 / A4）**
+
+
+
+## Methodology
+
+方法论
+
+Our analysis of OF required a comprehensive understanding of the implemented protocols by Apple. Our methodology follows previous works analyzing the Apple ecosystem [21, 36, 44, 45, 48], while providing new insights into the reverse engineering process. We started this research with the beta releases of macOS 10.15 and iOS 13, the first Apple OSs to support OF. During that time, no official documentation from Apple was available regarding the OF design or implementation. Therefore, we used reverse engineering tools such as system log analysis, static binary analysis, and network traffic analysis. In addition, we implemented an OF prototype to validate our findings. Some of our findings, such as the BLE advertisement format and cryptographic primitives, were later confirmed by Apple’s specification for third-party accessories [6].
+
+我们分析OF需要对Apple实现的协议有全面的理解。我们的方法follows之前对Apple生态的分析工作，同时为逆向工程提供新的视角。我们在macOS 10.15和iOS 13开始研究，他们是第一个支持OF的版本。期间没有Apple开放的关于OF设计或实现的官方文档。因此，我们使用了逆向工具（系统日志分析，静态二进制分析，网络数据包分析）进行分析。此外，我们实现OF prototype来验证我们的发现。其中的一些发现，譬如BLE广播格式和密码技术原语，都得到Apple官方spec的确认。《Find_My_network_accessory_protocol_specification》
+
+### System Logging
+
+To get a first overview of OS internals, we used the system logging facility on macOS. It aggregates applications and kernel events, and can access the same events from a USB-attached iOS device. We can filter logs by process or keyword and adjust the log level for more verbose output. By using a special configuration profile [27], macOS will show logs that are normally redacted. On iOS, this option is only available with a jailbreak [14].
+
+
+
+### Binary analysis
+
+We use binary analysis to understand the closed-source OF protocols. Many Apple binaries have been written in Objective-C, which uses message dispatch to resolve methods at runtime. Therefore, Objective-C binaries include method and instance variable names as part of the dispatch table. This simplifies identifying interesting code paths and segments, e.g., those responsible for parsing BLE packets. Unfortunately, most OF code is written in the newer Swift programming language. Swift methods are statically called by their program address and, therefore, do not require an entry in the symbol table, i.e., the symbol names may be stripped by the compiler. Additionally, the Swift compiler adds several checks to achieve type safety, which clutters the compiled code and makes it hard to follow the program logic. However, dynamically linked frameworks and libraries must keep function names in the symbol table, facilitating the identification of interesting code segments. Furthermore, dynamic analysis methods aid in understanding the control flow and access function parameters at runtime. By hooking functions with a dynamic instrumentation tool such as Frida [40], we can, e.g., access cryptographic keys used by system processes as shown in [45].
+
+
+
+### Network analysis
+
+We can identify a service’s protocols by monitoring network interfaces, which helps understand the information exchange with external parties. OF uses two protocols: BLE for advertisements and HTTPS for server communication. To understand the embedded custom protocols and payloads, we rely on two sets of tools. For BLE, we use BTLEmap [31] to capture all BLE advertisements. As we already know the basic frame format of Apple’s custom advertisements from related work [21, 36], we were able to identify OF as a new subtype. HTTPS proxies such as [50] decrypt HTTPS sessions by masquerading as both HTTP client and server and using self-signed TLS certificates. To access OF-related traffic, we disabled *certificate pinning*, which OF clients use for all server communication.
+
+
+
+## Apple Offline Finding in Detail
+
+This section describes and discusses the technical details of Apple’s OF system. In reference to Fig. 1, we (1) explain the involved cryptography and the key exchange during initial device pairing, and then explain the protocols implementing (2) *losing*, (3) *finding*, (4) *searching* for devices.
+
+
+
+In short, devices and accessories in lost mode send out BLE advertisements containing a public key. Finder devices receive them, encrypt their location by using the public key, and upload a report to Apple’s servers. This results in an end-to-end encrypted location report that cannot be read by Apple or any other third-party that does not have access to the owner’s private keys.
+
+
+
+In the following, we explain the cryptography in use, the protocols involved in losing, searching, and finding devices, as well as a brief description of the system’s implementation on iOS and macOS.
+
+
+
+### Cryptography
+
+OF employs ECC [6]. In the following, we explain the key generation and derivation mechanisms and the cryptographic algorithms used for encryption and decryption.
+
+OF用的是ECC密码技术。接下来，我们解释密钥的生成和推导机制，还有加密和解密的密码算法。
+
+**Master Beacon and Advertisement Keys.** Initially, each owner device generates a private–public key pair (d0,p0) on the NIST P-224 curve and a 32-byte symmetric key SK0 that together form the *master beacon key*. Those keys are never sent out via BLE and are used to derive the rolling advertisement keys included in the BLE advertisements.
+
+主Beacon和广播密钥。最初的Pairing阶段，owner device基于NIST P-224生成一组公私钥对（d0，p0）和一个32-byte大小的对称密钥，合在一起叫做master beacon key。这些密钥是不会通过BLE散播出去，他们是用来推导出携带在BLE广播中的rolling public key。
+
+OF makes device tracking hard by regularly changing the contents of the BLE advertisements. In particular, OF uses the concept of *rolling* keys that can be deterministically derived if one knows the initial input keys (d0,p0) and SK0 but are otherwise unlinkable. OF iteratively calculates the *advertisement keys* (di,pi) for i > 0 as follows using the ANSI X.963 key derivation function (KDF) with SHA-256 [33] and a generator G of the NIST P-224 curve:
+
+SKi =KDF(SKi−1,“update”,32) (1) 
+
+(ui, vi) = KDF(SKi, “diversify”, 72) (2) 
+
+di = (d0 ∗ ui) + vi (3) 
+
+pi = di ∗ G (4)
+
+Equation (1) derives a new symmetric key from the last used symmetric key with 32 bytes length. Equation (2) derives the so-called “anti-tracking” keys ui and vi from the new symmetric key with a length of 36 bytes each. Finally, Eqs. (3) and (4) create the advertisement key pair via EC point multiplication using the anti-tracking keys and the master beacon key d0.
+
+OF为了保护设备行踪，设计了定期变化的BLE广播内容。特殊的，OF使用了rolling keys的概念，只要确定公私钥对（d0，p0）和共享密钥sk0，就可以被推导出来。OF使用ANSI X.963 密钥推导公式（KDF）和SHA-256依次计算出BLE广播的密钥（di, pi）（i > 0）。通过（1）~（4）共4条公式推导。
+
+**Key Synchronization.** All owner devices need to access the advertisement keys to download and decrypt location reports. Therefore, OF synchronizes the master beacon keys via iCloud in a property list file encrypted under Advanced Encryption Standard in Ga- lois/Counter Mode (AES-GCM). The decryption key for the file is stored in the iCloud keychain under the label “Beacon Store.”
+
+
+
+**Encryption.** The BLE advertisements sent out by a lost device contain an EC public key pi. A finder device that receives such an advertisement determines its current location and encrypts the location with pi. OF employs Elliptic Curve Integrated Encryption Scheme (ECIES) that performs an ephemeral Elliptic Curve Diffie-Hellmann (ECDH) key exchange to derive a shared secret and encrypt the report [37]. In particular, the finder’s encryption algorithm works as follows:
+
+
+
+1、Generate a new ephemeral key (d′ , p′ ) on the NIST P-224 curve for a received OF advertisement.
+
+2、Perform ECDH using the ephemeral private key d′ and the advertised public key pi to generate a shared secret.
+
+3、Derive a symmetric key with ANSI X.963 KDF on the shared secret with the advertised public key as entropy and SHA-256 as the hash function.
+
+4、Use the first 16 bytes as the encryption key e′.
+
+5、Use the last 16 bytes as an initialization vector (IV).
+
+6、Encrypt the location report under e′ and the IV with AES-GCM.
+
+
+
+The ephemeral public key p′ and the authentication tag of AES-GCM are part of the uploaded message, as shown in Fig. 2. All location reports are identified by an id, which is a SHA-256 hash of pi.
+
+<img src="find_my_2_location_report.png">
+
+
+
+**Decryption.** An owner device that retrieves en- crypted location reports follows the inverse of the en- cryption procedure. First, the owner device selects the proper advertisement keys (di,pi) based on the hashed pi of the location report. Second, it performs the ECDH key exchange with the finder’s ephemeral public key p′ and the lost device’s private key di to compute the sym- metric key e′ and the IV. Finally, the owner can use e′ and IV to decrypt the location report.
+
+
+
+### Losing
