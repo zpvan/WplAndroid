@@ -1034,19 +1034,28 @@ Motion detection and unwanted tracking detection protocols are enabled in separa
 
 ### Cryptography
 
-
+密码技术
 
 #### Operations
 
 Pairing the accessory with an owner device as well as deriving keys requires the following:
 
-* A cryptographically secure DRBG (see [NIST Special Publication 800-90A](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90Ar1.pdf)) with a reliable source
+Owner与Accessory做pairing时，派生出必要的keys，如下：
 
-of entropy (see [NIST Special Publication 800-90B](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90B.pdf)).
+* A cryptographically secure DRBG (see [NIST Special Publication 800-90A](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90Ar1.pdf)) with a reliable source of entropy (see [NIST Special Publication 800-90B](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90B.pdf)).
+
+  具有可靠熵源的加密安全 DRBG。
 
 * Modular reduction and addition of big integers.
+
+  大数的模的减法与加法。
+
 * An implementation of the SHA-256 cryptographic hash function.
+
+  SHA-256 加密哈希函数的实现。
+
 * An implementation of the ANSI x9.63 KDF (see [SEC1, 3.6.1 ANSI X9.63 Key Derivation Function](https://www.secg.org/SEC1-Ver-1.0.pdf)).
+
 * Computations on the NIST P-224 elliptic curve (see [FIPS 186-4, D.1.2.2. Curve P-224](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf)):
   * Generation of a random scalar in [1, q).
   * Scalar multiplication and point addition.
@@ -1185,3 +1194,459 @@ Whenever this specification requires AES-128-GCM decryption of a message M, give
 #### Random generation
 
 Whenever this specification requires generation random values, a cryptographically secure DRBG must be used.
+
+
+
+## Advertisements
+
+
+
+### BTLE advertising
+
+An accessory that is not Find My network paired shall advertise the Find My network service as a primary service when the user puts the accessory in pairing mode.
+
+
+
+After Find My network pairing, the accessory shall advertise the Find My network BTLE payload in the format defined in Table 5-1.
+
+**Table 5-1 BTLE advertising**
+
+| AdvAddress       | Manuf AD Type           | Find My network payload     |
+| ---------------- | ----------------------- | --------------------------- |
+| PrimaryKey[0..5] | AD Type \|-\| CompanyID | Nearby or separated payload |
+
+
+
+The Find My network advertising payloads replaces the AdvA field of the advertising PDU defined by the BT SIG with the first 0 to 5 bytes of the current key. The nearby or separated state of the accessory determines the current key. Most significant bits of byte 0 shall be 0b11, indicating a static device address.
+
+
+
+The Find My network advertisement payload shall not contain other data types. An accessory must always advertise the Find My network payloads once every T_ADVINT. The accessory may use another advertising instance to broadcast other data types and services.
+
+
+
+The manufacturer AD type is defined by the BT SIG, and the payload indicates that the type is Apple.
+
+
+
+**Table 5-2 Manufacturer data**
+
+| Byte | Value  | Description                    |
+| ---- | ------ | ------------------------------ |
+| 0    | 3      | Length of manufacturer AD type |
+| 1    | 0xFF   | Manufacturer data AD type      |
+| 2..3 | 0x004C | Apple company ID               |
+
+
+
+#### Payload for nearby state
+
+When the accessory is in the nearby state or connected to a paired owner device, the advertising payload format must be as defined in Table 5-3.
+
+**Table 5-3 Payload for nearby state**
+
+| Byte | Value                                                        | Description                                                  |
+| ---- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 0    | 0x12                                                         | Apple payload type                                           |
+| 1    | 0x02                                                         | Length of payload                                            |
+| 2    | Bits 0-1: Reserved<br />Bit 2: Maintained<br />Bits 3-4: Reserved<br />Bit 5: 0b1<br />Bits 6-7: Battery state. | Maintained<br/>Set if owner connected within current key rotation period (15 minutes)<br/>Battery state definition<br/>0 = Full<br/>1 = Medium<br/>2 = Low<br/>3 = Critically low |
+| 3    | Bits 0-1: Public key<br />Bits 2-7: Reserved                 | Bits 6–7 of byte 0 of the primary key (P_i)                  |
+
+
+
+#### Payload for separated state
+
+When the accessory is in the separated state, the advertising payload format must be as defined in Table 5-4.
+
+**Table 5-4 Payload for wild state**
+
+| Byte | Value                                                        | Description                                                  |
+| ---- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 0    | 0x12                                                         | Apple payload type                                           |
+| 1    | 0x19                                                         | Length of payload                                            |
+| 2    | Bits 0-1: Reserved<br />Bit 2: Maintained<br />Bits 3-4: Reserved<br />Bit 5: 0b1<br />Bits 6-7: Battery State | Maintained<br/>Set if owner connected within current key rotation period (15 minutes)<br/>0 = Full<br/>1 = Medium<br/>2 = Low<br/>3 = Critically low |
+| 3-24 | Separated public key                                         | Bytes 6–27 of the Public Key, P_i or PW_j depending on accessory state. See Nearby to separated, Sep- arated to separated, and After power cycle for pos- sible separated state transitions. |
+| 25   | Bits 0–1: Public key<br />Bits 2–7: Reserved                 | Bits 6–7 of byte 0 of the public key (P_i or PW_j)           |
+| 26   | Hint                                                         | Byte 5 of the Bluetooth address of the current primary key P_i |
+
+
+
+## Pairing and Key Manager
+
+### Overview
+
+An accessory must be paired to an owner device before it can be locatable. An owner device will initiate the standard BTLE encryption before it accesses the Find My network services.
+
+
+
+<img src="protocol_spec_3_pairing.png">
+
+
+
+### Pairing
+
+Find My network pairing is initiated by the owner device using the pairing control point procedures. When an accessory pairs, it must not expose the Find My network pairing control point and it must respond to any of the pairing control point procedures with an invalid_command error message.
+
+
+
+An accessory will not be able to Find My network pair if it is paired to an owner device with a different Apple ID.
+
+
+
+#### Pairing mode
+
+The accessory must require explicit user intent to enable the Find My network pairing mode. When the user initiates the Find My network pairing mode, the accessory must advertise the Find My network service as a primary service. See Find My network service. The accessory must exit the pairing mode after a time-out.
+
+
+
+#### Generate pairing data
+
+Upon establishing standard BLE encrypted pairing session, the accessory must generate collaborative commitment (C1) to start the pairing process and generate per pairing session encryption key seed (SeedK1). See Random generation for the generation of SeedK1. The accessory must regenerate SeedK1 for every new pairing session.
+
+See Collaborative key generation for C1 details.
+
+See Send pairing data pairing control point for details.
+
+
+
+#### Send pairing data
+
+The accessory must send encrypted payload generated using Apple server encryption key (Q_E). 
+
+The parameters listed in Table 6-1 are included in generating E2. See ECIES Encryption for E2 generation.
+
+
+
+**Table 6-1 Payload to generate E2**
+
+| Key                 | Data type | Size(octets) | Description                                                  |
+| ------------------- | --------- | ------------ | ------------------------------------------------------------ |
+| SessionNonce        | bytes     | 32           | Nonce generated by Apple device                              |
+| C1                  | bytes     | 32           | Data sent by the accessory as initial commitment for pair- ing (see Collaborative key generation for C1 details) |
+| Software auth token | bytes     | 1024         | Software authentication token that’s vended by Apple for each accessory |
+| Software auth UUID  | bytes     | 16           | Accessory UUID that’s associated with software auth          |
+| Serial Number       | bytes     | 16           | Accessory serial number                                      |
+| Product ID          | String    | 16           | Accessory product ID                                         |
+| Vendor ID           | String    | 16           | Accessory vendor ID                                          |
+| FW version          | String    | 4            | Accessory firmware version                                   |
+| E1                  | bytes     | 89           | Encrypted blob generated by owner device                     |
+| SeedK1              | bytes     | 16           | Per pairing session seed for encryption key                  |
+
+
+
+#### Finalize pairing
+
+The owner device initiates the finalize pairing process to complete pairing. See Finalize pairing for details.
+
+
+
+#### Validate and confirm pairing
+
+The accessory must validate the Apple server signature (S2) using an Apple server signature verification key (Q_A) in order to finalize pairing.
+
+The parameters listed in Table 6-2 are included in generating S2.
+
+**Table 6-2 Payload to generate signature message for S2 verification**
+
+| Key                | Data type | Size(octets) | Description                                                  |
+| ------------------ | --------- | ------------ | ------------------------------------------------------------ |
+| Software auth UUID | bytes     | 16           | Accessory UUID that’s associated with software token         |
+| SessionNonce       | bytes     | 32           | Nonce generated by owner device                              |
+| SeedS              | bytes     | 32           | Unique server seed for each accessory that’s paired          |
+| H1                 | bytes     | 32           | Compute H1=SHA-256(C2)                                       |
+| E1                 | bytes     | 89           | Encrypted blob generated by owner device                     |
+| E3                 | bytes     | 1052         | Encrypted software token that’s vended by Apple server for each accessory |
+
+
+
+In case of signature verification failure, the accessory must abort pairing. See Send Pairing Status for more details about success and error status.
+
+If Apple server signature verification is successful, then the accessory must decrypt Apple server encrypted blob (E3) using per pairing session symmetric AES 128-bit key (K1).
+
+See derivation of the Pairing Session Key K1 for details on obtaining K1. See AES-GCM decryption for E3 decryption details.
+
+If S2 verification and E3 decryption are successful, then the accessory must store a new software token from E3 and generate a collaborative key (C3) as an acknowledgement to confirm pairing.
+
+The accessory must always use the latest (renewed) software token for any subsequent operations that require authentication with Apple servers (for example, unpair).
+
+See Collaborative key generation for C3 details. See Finalize pairing for E3 details.
+
+
+
+#### Send pairing status
+
+After successful pairing, the accessory must go into nearby state and send an acknowledgement to the owner device to confirm the pairing.
+
+The accessory must initialize a 64-bit counter to 0. This counter is used along with the serial number in the NFC payload.
+
+In case of pairing error, the accessory must abort pairing and send a pairing error code. For both success and error, the accessory must generate an encrypted blob (E4) and send it to the owner device.
+
+The payload parameters listed in Table 6-3 are included in generating E4. See ECIES Encryption for E4 generation.
+
+
+
+**Table 6-3 Payload to generate E4**
+
+| Key                | Data type | Size(octets) | Descriptions                                         |
+| ------------------ | --------- | ------------ | ---------------------------------------------------- |
+| Software auth UUID | bytes     | 16           | Accessory UUID that’s associated with software token |
+| Serial Number      | bytes     | 16           | Accessory serial number                              |
+| SessionNonce       | bytes     | 32           | Nonce generated by the owner device                  |
+| E1                 | bytes     | 89           | Encrypted blob generated by the owner device         |
+| Software token     | bytes     | 1024         | Latest Software token                                |
+| Status             | bytes     | 4            | Success/failure status code                          |
+| OpCode             | bytes     | 4            | Context, value =“Ack”                                |
+
+Pairing error codes will be provided in an updated developer preview. See Send pairing status for details.
+
+
+
+### Key management
+
+#### Key definitions
+
+As part of a successful pairing flow, the accessory and the owner device will collaboratively generate both of the following:
+
+* A master public key, P
+* Two symmetric keys, SK_N and SK_S
+
+
+
+A derivative of the public key P will be broadcast over BTLE. Finder devices can use it to encrypt their current location and provide it to Apple servers for the accessory owner to download and decrypt.
+
+
+
+Additionally, the accessory and the server generate a shared secret. The shared secret is used to derive a key and protects requests related to obtaining lost mode information:
+
+* Secret shared with server: ServerSharedSecret
+
+* Symmetric key for pairing session: K1
+
+* Symmetric key for queries with serial number: KS_N
+
+
+
+#### Key sequences and rotation policy
+
+The accessory must generate public key sequences with different key rotation intervals, referred to as primary and secondary keys.
+
+* P and SK_N are used to derive the primary key (P_i), which rotates every 15 minutes.
+
+* P and SK_S are used to derive the secondary key (PW_j), which rotates every 24 hours (that is, after every 96 iterations of primary key P_i).
+
+
+
+#### Bluetooth advertisement key selection policy
+
+##### After pairing
+
+The accessory must use the primary key P_i (where i=1) as a BTLE advertisement and enters nearby state. See Payload for nearby state for details.
+
+
+
+##### Nearby to nearby state transition
+
+If at the end of period ‘i’ the accessory is still in nearby state, it must use the next primary key P_i+1 (where ‘i’ is the last primary key index) as a BTLE advertisement. See Payload for nearby state for details.
+
+
+
+##### Nearby to separated state transition
+
+When the accessory switches to separated state, it must continue to use the current primary key P_i as a BTLE advertisement until the end of the current separated key period (4 a.m. local time). See Payload for separated state for details.
+
+
+
+##### Separated to separated state transition
+
+If at the end of the current separated key period (4 a.m. local time) the accessory is still in separated state, and it was previously advertising the last primary key Pi right after the state transition, it must compute j=i/96+1 and the secondary key PWj and use the latter as a BTLE advertisement.
+
+
+
+If at the end of the current separated key period (4 a.m. local time) the accessory is still in separated state, and it was previously advertising the secondary key PWj, it now must use the next secondary keyPWj+1 asaBTLEadvertisement.SeePayloadforseparatedstatefordetails.
+
+
+
+##### After power cycle
+
+The accessory must compute j=i/96+1 and the secondary key PWj (where ‘i’ is the current primary key index) and use the latter as a BTLE advertisement. See Payload for separated state for details.
+
+
+
+#### Key schedule definitions
+
+a || b denotes concatenation of the values a and b.
+
+G is the base point of the NIST P-224 elliptic curve. See FIPS 186-4, D.1.2.2. Curve P-224.
+
+q is the order of the base point G. x(P) denotes the x coordinate of the elliptic curve point P.
+
+ANSI-X9.63-KDF(Z, sharedInfo) denotes the KDF described by SEC1, 3.6.1 ANSI X9.63 Key Derivation Function. Z is the secret value (the input key material) and sharedInfo is data shared between the two parties.
+
+Random values and scalars must be generated using a cryptographically secure DRBG. See Operations.
+
+
+
+##### Collaborative key generation
+
+As part of the pairing flow, the owner device and the accessory must collaboratively generate a public key P and two symmetric keys, SK_N and SK_S.
+
+
+
+1、The accessory generates a P-224 scalar s (see Random scalar generation) and a 32-byte random value r. It sends the value C1 = SHA-256(s || r), where len(C1) = 32 bytes, to the owner device. (See Send pairing data.)
+
+
+
+2、TheownerdevicegeneratesaP-224scalars’(seeRadomScalarGeneration)anda32-byte random value r’. It computes S’ = s’ ⋅ G and sends C2 = {S’, r’}, where len(C2) = 89 bytes, to the accessory. (See Finalize pairing.)
+
+
+
+3、TheaccessorychecksS’andabortsifitisnotavalidpointonthecurve.(SeeEllipticcurvepoint validation.) It computes the final public key P = S’ + s ⋅ G and sends C3 = {s, r}, where len(C3) = 60 bytes, to the owner device. (See Send pairing status.)
+
+
+
+4、TheownerdeviceabortsifsisnotavalidP-224scalar(seeScalarvalidation)orifC1≠ SHA-256(s || r). It computes the final public key P = S’ + s ⋅ G and the private key d = s + s’ (mod q).
+
+
+
+5、BoththeownerdeviceandtheaccessorycomputethefinalsymmetrickeysSKNandSKSasthe 64-byte output of ANSI-X9.63-KDF(x(P), r || r’), where SKN is the first 32 bytes and SKS is the last 32 bytes.
+
+
+
+##### Derivation of primary and secondary keys
+
+The accessory must derive primary and secondary keys from the public key P generated at pairing time. P itself must never be sent out and must be stored in a secure location.
+
+
+
+For a given 15-minute period i:
+
+
+
+1、Derive SKNi = ANSI-X9.63-KDF(SKNi-1, “update”), where SKN0 is the SKN as agreed upon at pairing time.
+
+
+
+2、Derive AT_i = (ui, vi) = ANSI-X9.63-KDF(SKN_i,“diversify”) where len(AT_i) = 72 bytes and len(ui) = len(vi) = 36 bytes.
+
+
+
+3、Reduce the 36-byte values ui,vi into valid P-224 scalars by computing the following:
+
+* a.ui = ui (mod q-1) + 1
+* b.vi = vi (mod q-1) + 1
+
+
+
+4、Compute Pi =ui ⋅P +vi ⋅G.
+
+
+
+Secondary keys are generated as shown above, using period j instead of i and SKS instead of SKN. The result will then be called PWj instead of Pi.
+
+
+
+##### Derivation of link encryption key LTKi
+
+The Find My network key generation algorithm generates LTKs, rotating every 15 minutes. The accessory shall use the LTK that corresponds to the current key period as the LTK to encrypt the link on connection to the owner device. A paired owner device also picks the same LTK to encrypt the link. If the device is not a paired Apple device or if the LTK results in a failed encryption, the accessory must disconnect.
+
+
+
+The accessory must derive a new link encryption key LTKi for every 15-minute period i. If the paired owner device is nearby, it can use this key to establish a Bluetooth connection and encrypt the link.
+
+
+
+For a given 15-minute period i:
+
+1、Derive the symmetric key SKNi = ANSI-X9.63-KDF(SKNi-1, “update”), where SKN0 is the symmetric key SKN as agreed upon at pairing time.
+
+
+
+2、Derive the Intermediate key IKi = ANSI-X9.63-KDF(SKNi, “intermediate”), where len(IKi) = 32 bytes.
+
+
+
+3、Derive the Link Encryption key LTKi = ANSI-X9.63-KDF(IKi, “connect”), where len(LTKi) = 16 bytes.
+
+
+
+##### Derivation of command key CKi
+
+The accessory must derive a new command key CKi for every 15-minute period i. The paired owner device uses CKi to ensure the authenticity of commands sent to the accessory.
+
+
+
+For a given 15-minute period i:
+
+
+
+1、Derive the symmetric key SKNi = ANSI-X9.63-KDF(SKNi-1, “update”), where SKN0 is the symmetric key SKN as agreed upon at pairing time.
+
+
+
+2、Derive the Intermediate key IKi = ANSI-X9.63-KDF(SKNi, “intermediate”), where len(IKi) = 32 bytes.
+
+
+
+3、Derive the command key CKi = ANSI-X9.63-KDF(IKi, “command”), where len(CKi) = 32 bytes.
+
+
+
+##### Derivation of the Nearby AuthTokeni
+
+The accessory and owner device will derive a new NearbyAuthTokeni for a given 15-minute period i. The paired owner device broadcasts with an advertising address derived from the NearbyAuthTokeni. An accessory in separated state must switch to nearby state upon detecting such a broadcast.
+
+
+
+For a given 15-minute period i:
+
+1、Derive the primary key Pi as shown in Derivation of primary and secondary keys.
+
+
+
+2、Derive the command key CKi as shown in Derivation of command key CKi.
+
+
+
+3、Denote x(Pi) as the x-coordinate of the primary key Pi, where x(Pi) is represented as a 28-byte big-endian integer.
+
+
+
+4、Compute NOATi = HMAC-SHA256(CKi, x(Pi) || “NearbyAuthToken”).
+
+
+
+5、Compute Nearby AuthToken_i = MostSignificant6Bytes(NOAT_i)
+
+
+
+##### Derivation of ServerSharedSecret
+
+Upon successful pairing, the accessory must generate and retain ServerSharedSecret, where ServerSharedSecret is a 32-byte shared secret:
+
+ServerSharedSecret = ANSI-X9.63-KDF(SeedS || SeedK1, “ServerSharedSecret”)
+
+
+
+##### Derivation of the pairing session key K1
+
+To generate the NFC tap payload, KSN must be generated as follows, where K1 is a 16-byte symmetric key:
+
+K1 = ANSI-X9.63-KDF(ServerSharedSecret, “PairingSession”)
+
+
+
+##### Derivation of the serial number protection key
+
+To generate the NFC tap payload, KSN must be generated as follows, where KSN is a 16-byte symmetric key:
+
+
+
+KSN = ANSI-X9.63-KDF(ServerSharedSecret, “SerialNumberProtection”)
+
+
+
+### Unpair
+
+Unpair action is initiated by the paired owner device to delete Find My network data.
+
+See Unpair for the unpair procedure. See Factory reset for details on resetting the accessory.
