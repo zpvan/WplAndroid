@@ -905,3 +905,283 @@ We release the following open-source software artifacts as part of the Open Wire
 ### Acknowledgments
 
 We thank our anonymous reviewers and our shepherd Santiago Torres-Arias for their invaluable feedback. We thank Fontawesome for the vector graphics and Stamen for the map tiles used in our figures. This work has been funded by the LOEWE initiative (Hesse, Germany) within the emergenCITY center and by the German Federal Ministry of Education and Research and the Hessen State Ministry for Higher Education, Research and the Arts within their joint support of the National Research Center for Applied Cybersecurity ATHENE.
+
+
+
+# FindMyProtocolSpec
+
+Apple官方协议规格书
+
+
+
+## Core Concepts
+
+核心内容
+
+### Overview
+
+The *Find My Network Accessory Specification* defines how an accessory communicates with Apple devices to help owners locate their accessories privately and securely by using the Find My network.
+
+Find My Network Accessory Specification定义：在Find My network中，accessory与Apple devices的交互格式，保证隐私与安全的前提下，以帮忙owner追踪到accessory的位置。
+
+### Find My app
+
+The Find My app is where you locate your Apple devices, share your location with friends and family, and locate all Find My network-enabled accessories. The app displays the location of findable items and includes additional features to protect your devices, such as playing sound, using Lost Mode, and so on. See the Find My webpage for more details.
+
+Find My app具体3个功能，手机自身定位服务，分享定位，发现Find My network-enabled accessory。App除了可以展示accessory的位置外，还有一些额外的特性，譬如Ringing，开关Lost Mode。
+
+### Transport
+
+The Find My network accessory protocol uses Bluetooth Low Energy (BTLE) as the primary transport to interact with Apple devices.
+
+Find My network accessory protocol 使用BLE作为首要的通信链路。
+
+### Operation
+
+The accessory and the owner Apple device generate a cryptographic key pair after Find My network pairing. The owner Apple device has access to both the private and the public key, and the accessory has the public key.
+
+Accessory与Owner在经过Find My network pairing后，会生成一个cryptographic key pair，Owner拥有private key和public key，Accessory只拥有public key。
+
+An accessory subsequently broadcasts a rotating key (derived from the public key) as a low energy Bluetooth beacon. This beacon can be picked up by nearby Apple devices (see Find My network). The Apple devices publish the key received in the Bluetooth beacon, along with its own location encrypted using that same key, to Apple servers. Because the private key is stored only on the owner device, the location information is accessible only to the device owner. The data stored in Apple servers is end-to- end encrypted, and Apple does not have access to any location information.
+
+Accessory通过BLE将rotating key（由public key派生出来）广播出去，Finder能够发现附近的accessory。Finder从BLE广播中retrieve出publick key，使用public key对自身的location加密，并上传到server。因为private key只保存在owner，所以location信息只会被owner解密。
+
+### Roles
+
+<img src="protocol_spec_1_roles.png">
+
+#### Owner device
+
+When an accessory is paired with an Apple device through the Find My app, the accessory is associated with the Apple ID on that device. This device and all other Apple devices signed in with the same Apple ID are treated as owner devices. The Find My app on an owner device can be used to locate accessories. An owner device is required for actions such as unpairing the device, firmware update, locate, and so on.
+
+
+
+#### Accessory
+
+An *accessory* is the device that implements the Find My network accessory protocol and can be located using the Apple Find My network and servers. The accessory is paired with the Apple ID in use on the owner device.
+
+
+
+#### Find My network
+
+The Find My network provides a mechanism to locate accessories by using the vast network of Apple devices that have Find My enabled. When an accessory is detected by a nearby Apple device, the device publishes its own encrypted location as the approximate location of the detected accessory. Reports from more than one Apple device can provide a more precise location. Any Apple device that participates in the Find My network is called a *Finder device*. Participation in the Find My network is a user choice that can be reviewed or changed anytime in Settings.
+
+A *non-owner device* is an Apple device in a Find My network that may connect to the accessory but is not an owner device. (For example, a device might connect in response to a UT alert; see Unwanted tracking detection.)
+
+
+
+#### Apple server
+
+Apple server receives encrypted location data from Finder devices and temporarily stores it. Only the owner devices can decrypt and read raw locations from the encrypted data. Apple cannot read this information.
+
+
+
+### States
+
+Accessory operations can be described using a state machine with the states listed in this section and transition between them based on interactions with an owner device.
+
+<img src="protocol_spec_2_status.png">
+
+#### Unpaired
+
+The accessory must be in an unpaired state on first startup or before the accessory setup is completed. In this state, the accessory must advertise Find My network service as a primary service in a connectable Bluetooth advertisement (See BTLE advertising). The owner user initiates pairing from an owner device. See Pairing for the pairing procedure.
+
+
+
+#### Connected
+
+The accessory must enter connected state after the Find My network pairing successfully completes with the owner device. The owner device may disconnect from the accessory after pairing completes. Once paired, the accessory must not pair with another Apple device for Find My network functions. It must stay paired until it successfully completes the unpairing procedure with the owner device.
+
+
+
+The accessory must reenter the connected state from nearby or separated state or whenever an owner device connects to the accessory. The accessory shall support simultaneous connections to two Apple devices on the same iCloud account.
+
+
+
+Motion detection and UT protocols are disabled in connected state. When the accessory enters this state, advertising payload is set to the nearby key.
+
+
+
+#### Nearby
+
+
+
+The accessory must enter the nearby state immediately after it disconnects from an owner device. The accessory shall remain in nearby state for TNEARBY. See Timers and constants.
+
+
+
+Motion detection and unwanted tracking detection protocols are disabled in nearby state. When the accessory enters this state, advertising payload is set to the nearby key. See Payload for nearby state for details.
+
+
+
+#### Separated
+
+
+
+The accessory must enter the separated state under these conditions:
+
+1、The accessory is paired and starts up from a reset, power cycle, or other reinitialization procedure.
+
+2、The accessory is innear by state and the T_NEARBY time-out has expired.
+
+Motion detection and unwanted tracking detection protocols are enabled in separated state. When the accessory enters this state, advertising payload is set to the separated key. See Payload for separated state for details.
+
+
+
+## Requirements
+
+
+
+### Cryptography
+
+
+
+#### Operations
+
+Pairing the accessory with an owner device as well as deriving keys requires the following:
+
+* A cryptographically secure DRBG (see [NIST Special Publication 800-90A](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90Ar1.pdf)) with a reliable source
+
+of entropy (see [NIST Special Publication 800-90B](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90B.pdf)).
+
+* Modular reduction and addition of big integers.
+* An implementation of the SHA-256 cryptographic hash function.
+* An implementation of the ANSI x9.63 KDF (see [SEC1, 3.6.1 ANSI X9.63 Key Derivation Function](https://www.secg.org/SEC1-Ver-1.0.pdf)).
+* Computations on the NIST P-224 elliptic curve (see [FIPS 186-4, D.1.2.2. Curve P-224](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf)):
+  * Generation of a random scalar in [1, q).
+  * Scalar multiplication and point addition.
+  * Verification that a point is on the P-224 elliptic curve.
+
+* ECDSA/ECDH over the NIST P-256 elliptic curve (see [FIPS 186-4, D.1.2.3. Curve P-256](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf) and Pairing for more details).
+
+* AES-128-GCM decryption (see [NIST Special Publication 800-38D](https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf)).
+
+
+
+#### Implementation
+
+Cryptographic operations and algorithms must compute on secret values in constant time to defend against timing attacks. Similarly, a secret value (or parts of one) must not be used as a memory offset or as the condition for a branch instruction.
+
+Scalar generation should either use rejection sampling or generate at least 64 more bits than needed so that the bias due to the modular reduction is negligible (see [FIPS 186-4, B.4.1 Key Pair Generation Using Extra Random Bits](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf) and [B.4.2 Key Pair Generation by Testing Candidates](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf)). The scalar must not be generated by simply reducing the minimally required number of random bytes modulo q (the order of the base point) because this leads to a biased distribution.
+
+Implementation of the scalar multiplication and point addition on elliptic curves must be safe against timing attacks. An exception may be made when computing on public values; for example, to speed up ECDSA signature verification. A variable-time, double-base scalar multiplication for ECDSA signature verification must not be used to compute primary or secondary keys.
+
+Upon receiving a scalar, it must be checked to be in range [1, q), where q is the order of the base point of the elliptic curve, before continuing with the protocol flow. See Scalar validation.
+
+Upon receiving an elliptic curve point, it must be checked to be on the curve. See Elliptic curve point validation.
+
+
+
+#### Endianness and wire format
+
+All elliptic curve points, coordinates, and scalars must be transmitted in big-endian byte order; that is, the most significant bytes are sent first.
+
+Whenever a scalar or a coordinate is the input for an algorithm like SHA-256() or ANSI-X9.63-KDF(), or the output of a function, its byte order is assumed to be big-endian. A point is expected to be formatted in uncompressed ANSI X9.63 format. See [SEC1, 2.3.3 EllipticCurvePoint-to-OctetString Conversion](https://www.secg.org/SEC1-Ver-1.0.pdf).
+
+
+
+#### Random scalar generation
+
+Whenever this specification requires generation of a P-224 scalar, follow this process:
+
+1、Generate r = 28 random bytes using a cryptographically secure DRBG. See Operations.
+
+2、If r >= q - 1, where q is the order of the base point of the P-224 elliptic curve, goto step 1.
+
+3、Computes = r + 1 and return s as the new scalar.
+
+Another option to securely generate a P-224 scalar is as follows:
+
+1、Generate r = 36 random bytes using a cryptographically secure DRBG. See Operations.
+
+2、Compute k = r(mod q-1), where q is the order of the base point of the P-224 elliptic curve.
+
+3、Computes = k + 1 and return s as the new scalar.
+
+Whenever this specification requires generation of a P-256 scalar, follow this process:
+
+1、Generate r = 32 random bytes using a cryptographically secure DRBG. See Operations.
+
+2、If r >= q - 1, where q is the order of the base point of the P-256 elliptic curve, goto step 1.
+
+3、Compute s = r + 1 and return s as the new scalar.
+
+Another option to securely generate a P-256 scalar is as follows:
+
+1、Generate r = 40 random bytes using a cryptographically secure DRBG. See Operations.
+
+2、Compute k = r(mod q-1), where q is the order of the base point of the P-256 elliptic curve.
+
+3、Compute s = k + 1 and return s as the new scalar.
+
+
+
+#### Scalar validation
+
+Whenever this specification requires validation of a P-224 scalar, follow this process:
+
+1、If the given scalar s = 0, reject it as invalid.
+
+2、If s >= q, where q is the order of the base point of the P-224 elliptic curve, reject s as invalid.
+
+3、Make s a valid scalar.
+
+
+
+#### Elliptic curve point validation
+
+Whenever this specification requires validation of a P-224 elliptic curve point, follow this process:
+
+1、Check that the length of a point is 57 bytes.
+
+2、Decode x and y as big-endian integers in the range[0, 2^224).
+
+3、Check that x<p and y<p, where p=2^224 - 2^96 + 1.
+
+4、Check that y^2 =x^3 + ax + b, where a = p - 3 and b = 0xb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4.
+
+
+
+#### ECDSA signature verification
+
+Whenever this specification requires verification of a P-256 ECDSA signature over a message m:
+
+1、Decode the given signature in X9.62 format to obtain two 32-byte big-endian integers r and s
+
+(see [SEC1, C.5 Syntax for Signature and Key Establishment Schemes](https://www.secg.org/SEC1-Ver-1.0.pdf)).
+
+2、Check that 0 < r < p and 0 < s < p, where p = 2^256 - 2^224 + 2^192 + 2^96 - 1.
+
+3、Compute e = SHA-256(m), where m is the signed message.
+
+4、Let z be the |q| left most bits of e, where |q| is the bit length of the group order q.
+
+5、Compute u1 = zs^-1 (mod q) and u_2 = rs^-1 (mod q).
+
+6、Compute the point(x, y) = u1 ⋅ G + u2 ⋅ QA, where G is the base point of the P-256 elliptic curve and QA is Apple’s signature verification key.
+
+7、If (x, y) is the point at infinity, reject the signature.
+
+8、If r = x (mod q), then accept the signature, and if not, reject it.
+
+See Apple server public keys for signature verification key (QA) details.
+
+
+
+#### AES-GCM decryption
+
+Whenever this specification requires AES-128-GCM decryption of a message M, given a 128-bit AES key K, follow this process:
+
+1、Decode message C in the following way: The first 12 bytes are the initialization vector IV, and the last 16 bytes are the authentication tag T. The bytes in between are the ciphertext C.
+
+2、Decrypt cipher text Cas(M,T’) = AES-128-GCM(K,IV,C) without any additional authenticated data.
+
+3、Compare authentication tags T and T’. Do not abort as soon as a mismatch is found, but report an error only after all bytes have been compared.
+
+4、If T ≠ T’, abort and discard the cipher text.
+
+
+
+#### Random generation
+
+Whenever this specification requires generation random values, a cryptographically secure DRBG must be used.
