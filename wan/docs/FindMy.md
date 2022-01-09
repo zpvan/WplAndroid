@@ -587,3 +587,321 @@ The ephemeral public key p′ and the authentication tag of AES-GCM are part of 
 
 
 ### Losing
+
+丢失场景
+
+An OF device that loses its Internet connection starts emitting BLE advertisements. This advertisement consists of the 224 bit (28 bytes) public part of the advertisement key (pi), but required some engineering effort to fit in a single BLE packet.
+
+BLE广播包括28bytes大小的公钥（记作pi），把她塞进BLE广播需要一些工程技巧。
+
+More precisely, OF only advertises the X coordinate of the public key, which has a length of 28 bytes. The Y coordinate is irrelevant for calculating a shared secret via ECDH, so the sign bit for the compressed format [20] can be omitted.
+
+准确地说，BLE广播仅仅携带the X coordinate of the public key，她刚好是28bytes。因为Y coordinate与用ECDH来计算shared secret没有关系，所以不用带上她。
+
+**Advertisement Packet Format.** Apple had to engineer its way around the fact that one BLE advertisement packet may contain at most 37 bytes [19, Vol. 6, Part B, § 2.3.1.3], of which 6 bytes are reserved for the advertising MAC address, and up to 31 can be used for the payload. For standard compliance, the custom OF advertisements needs to add a 4-byte header for specifying *manufacturer-specific data*, which leaves 27 bytes. Within this space, Apple uses a custom encoding for subtypes used by other wireless services such as AirDrop [21]), which leaves 25 bytes for OF data. To fit the 28-byte advertisement key in one packet, Apple repurposes the random address field to encode the key’s first 6 bytes. However, there is one caveat: the BLE standard requires that the first two bits of a random address be set to 0b11. OF stores the first two bits of the advertisement key together with the 24 remaining bytes in the payload to solve the problem. We depict the complete BLE advertisement packet format in Tab. 2. Apple confirmed the reverse-engineered specification later [6].
+
+| Bytes   | Content                                                  |
+| ------- | -------------------------------------------------------- |
+| 0 - 5   | BLE address ((pi[0] \| (0b11 << 6) \|\| pi[1...5])       |
+| 6       | Payload length in bytes (30)                             |
+| 7       | Advertisement type (0xFF for manufacturer-specific data) |
+| 8 - 9   | Company ID (0x004C)                                      |
+| 10      | OF type (0x12)                                           |
+| 11      | OF data length in bytes (25)                             |
+| 12      | Status (e.g., battery level)                             |
+| 13 - 34 | Public key bytes pi[6..27]                               |
+| 35      | Public key bits pi[0] ≫ 6                                |
+| 36      | Hint (0x00 on iOS reports)                               |
+
+
+
+**Advertising Interval.** The same key is emitted during a window of 15 minutes, after which the next key pi+1 is used. During a window, OF-enabled iOS and macOS devices emit one BLE advertisement every two seconds when they lose Internet connectivity.
+
+同一个key只会存在15min，之后就会计算下个key来发广播。
+
+
+
+### Finding
+
+发现场景
+
+All finder devices regularly scan for OF advertisements. When the finder receives a packet in the OF advertisement format, it generates and uploads an encrypted location report to Apple’s servers.
+
+所有的finder devices会定期扫描OF BLE广播。当find device收到OF格式的BLE广播时，她会生成和上传加密位置报告到Apple server。
+
+**Generating Reports.** The finder parses the public key from the advertisement. Then, it determines its current geolocation and creates a message that includes location, accuracy,3 and status information (cf. green fields in Fig. 2). The message is then encrypted using the algorithm described in § 6.1. Finally, the finder creates a complete location report, including the current timestamp (in seconds since January 1, 2001), the ephemeral public key d′, the encrypted message, and the AES-GCM authentication tag as shown in Fig. 2.
+
+
+
+**Uploading Reports.** Finder devices accumulate reports over time and upload them in batches regularly, possibly reducing energy and bandwidth consumption. During the evaluation with our test devices, we discovered that the median time from generating to up- loading a location report is 26 min. We include the delay distribution in Appendix B. The delay can increase to several hours if the finder device is in a low power mode [7]. A finder limits the number of uploaded reports for the same advertisement key to four, most likely to prevent excess traffic on Apple’s servers. The upload is implemented as an HTTPS POST request to https://gateway.icloud.com/acsnservice/submit. Every request is authenticated to ensure that only genuine Apple devices can upload requests. Table 3 shows the request header containing a device identity certificate, the signing CA’s certificate, and an Elliptic Curve Digital Signature Algorithm (ECDSA) signature over the request body. The certificates are stored in the device’s keychain. However, the private key used for signing is stored in the Secure Enclave Processor (SEP), Apple’s implementation of a trusted execution environment (TEE) [4]. The SEP prohibits the extraction of the signing key but provides an interface for signing requests. We assume that the finder authentication serves as a form of remote attestation. However, we were unable to verify this assumption due to the obfuscated code. The HTTPS request body is prefixed with a fixed header (0x0F8AE0) and one byte specifying the number of included reports. This limits the number of reports in a single request to 255. Each report consists the ID (SHA-256(pi)) followed by the 88-byte location report shown in Fig. 2.
+
+HTTPS相关的内容，RESTful API设计
+
+| Request Header       | Value                                              |
+| -------------------- | -------------------------------------------------- |
+| X-Apple-Sign1        | Device identity certificate (base64)               |
+| X-Apple-Sign2        | SHA-256 hash of the signing CA (base64)            |
+| X-Apple-Sign3        | Device ECDSA signature (ASN.1)                     |
+| X-Apple-I-TimeZone   | Client’s time zone (e.g., GMT+9)                   |
+| X-Apple-I-ClientTime | Client’s time (Unix)                               |
+| User-Agent           | “searchpartyd/1 <br />\<iPhoneModel>/\<OSVersion>” |
+
+
+
+### Searching
+
+查找场景
+
+An owner requests reported location from Apple’s servers when searching for a lost device. As the advertisement keys are synchronized across all of the owner’s devices, the owner can use any of their other devices with Apple’s *Find My* app to download and decrypt the location reports. In short, the owner device fetches location reports from Apple’s servers by sending a list of the most recent public advertisement keys of the lost device.
+
+owner device发送一组最近的public key到apple server，请求位置报告
+
+**Downloading Reports.** Similar to uploading (cf. § 6.4), downloading is implemented as an HTTPS POST request to https://gateway.icloud.com/ acsnservice/fetch. We show the headers in Tab. 4 and a truncated example body in Appendix A. The user authenticates with Apple’s servers using their Apple account in two steps. First, HTTP basic authentication [41] is performed with a unique identifier of the user’s Apple ID4 and a *search-party-token* that is device-specific and changes at irregular intervals (in the order of weeks). Second, several headers with so- called “anisette data” are included. Anisette data are short-lived tokens valid for 30 s and allow omitting two- factor authentication from a previously authenticated system [2].
+
+**Decrypting Reports.** The response to the download request contains a list of finder location reports (cf. Fig. 2) and metadata such as the hashed public advertisement key and the time when the report was uploaded. We show a truncated example of the response body in Appendix A. Using the respective private advertisement keys di, the owner device can then decrypt the received location reports. Apple’s *Find My* application combines a subset of the reports to display the most recent location of the lost device on a map. According to Apple, multiple reports are combined to get a more accurate location [4, p. 104]. While we did not reconstruct Apple’s algorithm, we show in § 7 that the downloaded location reports are sufficient to not only determine the most recent location but to even precisely reconstruct and trace the movement of a lost device.
+
+
+
+### System Implementation
+
+Apple’s OF system is implemented across several dae- mons and frameworks which communicate via XPC, Apple’s implementation of interprocess communica- tion [12]. We depict the dependencies of the iOS imple- mentation in Fig. 3. The main daemon that handles OF is *searchpartyd*, which runs with root privileges. It gen- erates the necessary keys and performs all cryptographic operations. The daemon is also responsible for commu- nicating with Apple’s servers to synchronize keys, sub- mit location reports as a finder device, and fetch loca- tion reports as an owner device. The *bluetoothd* daemon is responsible for sending and receiving OF advertise- ments and passes received advertisements to *locationd*. The *locationd* daemon adds the device’s current location and forwards this information to *searchpartyd*, which generates the finder reports. On macOS, some function- ality of *searchpartyd* such as the server communication is externalized to the *searchpartyuseragent* daemon to support the multi-user architecture that is not available on iOS.
+
+
+
+## Location Report Accuracy
+
+位置报告精确度
+
+
+
+
+
+## Security and Privacy Analysis
+
+安全和隐私分析
+
+In this section, we perform a security and privacy analysis of Apple’s OF system implemented on iOS and macOS based on the adversary models described in § 4. We first examine the cryptography-related components that are relevant for the local application **(A1)** and service operator **(A4)** models that have access to keys and encrypted reports, respectively. Then, we assess the BLE interface relevant to the proximity-based adversary **(A2)** and the HTTPS-based server communication relevant for the network-based adversary **(A3)**. We summarize our findings in Tab. 8 and discuss in the following.
+
+根据chapter 4的对抗模型，进行安全与隐私分析。我们首先测试（A1-local application）与（A2-service operator），然后我们评估与基于邻近的对手相关的 BLE 接口，还有基于HTTPS的网络对抗模型。我们还会总结我们的结论到如下表格：
+
+| Component                  | Potential issue<br />潜在问题                                | exploitable<br />可利用的 | Assessment<br />评估结论                                     |
+| -------------------------- | ------------------------------------------------------------ | ------------------------- | ------------------------------------------------------------ |
+| Cryptography<br />密码技术 | Key diversification<br />密钥多样化                          | N                         | The custom key diversification process follows the NIST recommendation for key derivation through extraction-then-expansion [16].<br />自定义密钥多样化过程遵循 NIST 建议，通过**提取-扩展**进行密钥派生 |
+|                            | Choice of P-224 curve<br />P-224曲线模型                     | N                         | Use of NIST P-224 is discouraged by some cryptographers [18]. However, we are unaware of any practical attacks against P-224 when used exclusively for ECDH.<br />一些密码学家不鼓励使用 NIST P-224 [18]。 然而，当专门用于 ECDH 时，我们不知道对 P-224 的任何实际攻击。 |
+|                            | Insecure key storage<br />非安全密钥存储                     | Y（A1）                   | Keychains and SEP are used to securely store keys for server communication and the master beacon key. However, macOS caches the derived advertisement keys on disk, which can be read by local applications. Attackers can exploit this to access (historical) geolocation data as we describe in § 10.<br />macOS将派生的广播密钥缓存在磁盘上，可被local application读取到，攻击者可利用历史记录。 |
+| Bluetooth<br />蓝牙技术    | Device tracking via BLE advertisements<br />通过BLE广播进行设备追踪 | N                         | BLE payload and address are determined by the advertisement key, which is changed at 15 min intervals, making long-term tracking hard.<br />因为BLE payload与address都依赖于rolling key，每15min换一次，所以预防了长期追踪。 |
+|                            | Remote code execution (RCE)<br />远程代行执行                | N                         | As OF uses non-connectable mode to emit advertisements, devices remain secure against RCE attacks on the Bluetooth firmware [42].<br />因为OF使用的是不可连接的BLE广播，避免了RCE攻击。 |
+|                            | Denial-of-service (DoS)<br />拒绝服务                        | Y（A2）                   | An attacker could emit/relay legitimate advertisements at other physical locations to **pollute** the set of location reports.<br />攻击者可以在其他物理位置发出/中继合法广告以污染位置报告集。 |
+| Server comm.<br />网络连接 | Spoofing (finder)<br />欺骗（finder）                        | N                         | Impact similar to Bluetooth relaying. However, we have been unable to inject fabricated location reports into the server communication.<br />影响类似于蓝牙中继。 但是，我们无法将伪造的位置报告注入服务器通信。 |
+|                            | Spoofing (owner)<br />欺骗（owner）                          | N                         | Spoofing an owner device is not critical as location reports are end-to-end encrypted.<br />欺骗所有者设备并不重要，因为位置报告是端到端加密的。 |
+|                            | Device identification<br />设备标识                          | Y（A4）                   | Apple’s servers can identify both finder and owner devices. This enables a location correlation attack that we discuss in § 9.<br />Apple 的服务器可以识别查找器和所有者设备。这使得我们在第 9 节中讨论的位置相关攻击成为可能。 |
+
+
+
+### Cryptography
+
+**Key Diversification.** OF employs key diversification to derive the rolling advertisement keys from the master beacon key (cf. § 6.1). Apple’s design follows the NIST recommendation of performing extraction-then-expansion [16] to securely derive keys. The two-step process first extracts a derivation key from a secure input and then expands this key to the desired output length. Specifically, OF first extracts a new 32-byte key SKi from the previous derivation key using the KDF and then expands SKi using the same KDF to 72 bytes.
+
+**密钥多样性**。OF采用Key Diversification和Master Beacon Key派生出Rolling Adv Keys。Apple的设计遵循NIST建议通过**提取-扩展**进行密钥派生。其中**提取**是指从安全输入中提取派生密钥，**扩展**是指将派生密钥的长度扩展到预期的长度。这里，OF首先使用KDF_OF和SK_i-1**提取**出一个32-byte的共享密钥SK_i，然后使用相同的KDF_OF将SK_i**扩展**到72-byte。
+
+**Choice of NIST P-224 Curve.** We believe that Apple’s choice for the NIST P-224 curve is the consequence of the constrained capacity of BLE advertisements while maximizing the security level of the encryption keys. Apple’s implementation of P-224 in *corecrypto* has been submitted to validate compliance with U.S. Federal Information Processing Standards (FIPS) [9]. Within the cryptography community, some researchers discourage the use of P-224 because its generation process is unclear [17, 18]. More modern curves with the same security margin are available, e.g., M-221 [13], but are not used by Apple. 
+
+**选择曲线NIST P-224**。Apple之所以选择P-224而没有选择更高安全性的256，是由于受BLE广播的长度选择。Apple 在 corecrypto 中的 P-224 实施已提交以验证是否符合美国联邦信息处理标准 (FIPS)。在密码学界，一些研究人员不鼓励使用 P-224，因为它的生成过程尚不清楚 [17, 18]。具有相同安全裕度的更现代的曲线可用，例如 M-221 [13]，但 Apple 并未使用。
+
+**Insecure Key Storage.** We analyzed how OF keys and secrets are stored on the system. While most in- volved keys are synchronized and stored in the iCloud keychain, we discovered that the advertisement keys de- rived from the master beacon key (cf. § 6.1) are cached on disk to avoid unnecessary re-computations. We found that the cached key directory is accessible by a local ap- plication with user privileges and can be used to bypass the system’s location API, as we describe in § 10.
+
+macOS没有内置的安全存储区域。
+
+### Bluetooth
+
+**Device Tracking.** One of the key design goals of OF is to prevent tracking of lost devices via their BLE advertisements. According to our analysis, OF fulfills this promise by randomizing both BLE advertisement address and payload in 15 min intervals (cf. § 6.2).
+
+
+
+**Remote Code Execution.** In addition, OF uses the so-called “non-connectable mode” [19, Vol. 3, Part C, § 9.3.2], which means that other devices cannot connect to it and exploit potential remote code execution (RCE) vulnerabilities in the Bluetooth firmware [42].
+
+
+
+**Denial-of-Service Through Relaying.** BLE advertisements only contain the public part of an advertisement key and are not authenticated. Anyone recording an advertisement can replay it at a different physical location. Any finder at that location would generate a location report and submit it to Apple. Through this type of relaying, an attacker could make a lost device appear at a different location, effectively mounting a DoS attack as owners would receive different contradicting location reports.
+
+
+
+### Server Communication
+
+**Spoofing.** The communication with Apple’s servers uses TLS, including certificate pinning to ensure that no MitM attack can be deployed. Based on our analysis, the protocol seems to implement a secure authentication scheme. However, we have been unable to reconstruct some of the involved components. We understand that a device-specific certificate (cf. § 6.3) and a private signing key, protected by the SEP, are involved in submitting reports. We *assume* that this private key is used for remote attestation to prevent non-Apple devices from submitting potentially fabricated reports. The genera- tion and registration process of these keys with Apple’s server remains unknown to us. Also, the “anisette data” used for authenticating owner devices (cf. § 6.4) is not publicly documented, and the code that generates the tokens is highly obfuscated.
+
+
+
+**Device Identification.** While we did not recover the exact details of the authentication mechanism, we have observed that both finder and owner devices pro- vide identifiable tokens to Apple’s servers. In particular, owner devices provide their Apple ID to access location reports. In § 9, we show that by requesting IDs, Apple’s servers are—in principle—able to correlate the locations of different owners.
+
+
+
+## Apple Can Correlate User Locations
+
+Apple可以关联用户位置
+
+Apple as the service provider **(A4)** could infer that two or more owners have been in close proximity to each other as OF uses identifiable information in both upload and download requests. Law enforcement agencies could exploit this issue to deanonymize participants of (political) demonstrations even when participants put their phones in flight mode. Exploiting this design vulnerability requires that the victims request the location of their devices via the Find My application.6 Next, we describe the vulnerability, a possible attack, and our proposed mitigation.
+
+Apple能够推断两个或多个owner的位置很靠近，因为OF使用了相同的identifiable information作为上传消息。即使参与者将手机置于飞行模式，执法机构也可以利用此问题对（政治）示威的参与者进行匿名化。利用此设计漏洞需要受害者通过 Find My 应用程序请求其设备的位置。6 接下来，我们将描述该漏洞、可能的攻击以及我们建议的缓解措施。
+
+
+
+### Vulnerability
+
+When uploading and downloading location reports, finder and owner devices reveal their identity to Apple. During the upload process, the finder reveals a device-specific identifier in the HTTPS request header (cf. Tab. 3) that can be used to link multiple reports to the same finder. Similarly, during the download process, the owner device has to reveal its Apple ID. In particular, the owner includes its Apple ID in the HTTPS request headers (cf. Tab. 4), which allows Apple to link reports uploaded by a particular finder to the Apple ID of the downloading owners. Since we do not have access to Apple’s servers, we cannot make assumptions about whether or not Apple actually stores such metadata. However, the fact that Apple *could* store this informa- tion indefinitely opens the possibility of abuse.
+
+在上传和下载位置报告时，finder和owner会向 Apple 透露他们的身份。在上传过程中，查找器会在 HTTPS 请求标头（参见表 3）中显示特定于设备的标识符，该标识符可用于将多个报告链接到同一查找器。同样，在下载过程中，所有者设备必须显示其 Apple ID。特别是，所有者将其 Apple ID 包含在 HTTPS 请求标头中（参见表 4），这允许 Apple 将特定查找器上传的报告链接到下载所有者的 Apple ID。由于我们无法访问 Apple 的服务器，因此我们无法假设 Apple 是否实际存储了此类元数据。然而，Apple *可以*无限期地存储这些信息的事实会无限期地打开滥用的可能性。
+
+​                               Advertise: p1
+ F ←−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−− L1
+
+​                               Advertise: p2
+ F ←−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−− L2
+
+​    Upload: SHA(p1), Report1, SHA(p2), Report2
+ F −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−→ Apple
+
+​               Download: Apple ID1, SHA(p1)
+ O1 −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−→ Apple
+
+​               Download: Apple ID2, SHA(p2)
+ O2 −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−→ Apple
+
+**Fig. 6.** Apple could infer which users have been in close proximity to each other.
+
+
+
+### Attack
+
+It is possible for Apple to find out which owners have been in physical proximity to each other *if the owners request the location of their devices via the Find My application.* We sketch the attack for two owners in Fig. 6. A finder F receives advertisements from the lost devices L1 and L2 that belong to the owners O1 and O2, respectively, and publishes encrypted location reports to Apple’s servers. Due to the limited communication range of BLE, we can reasonably assume that L1 and L2 have been in close proximity if the respective location reports were generated at a similar time and submitted by the same finder. Later, O1 and O2 both download location reports, by opening the *Find My* app, for L1 and L2, respectively. At this point, Apple can infer that these two owners identified by their Apple IDs were close to each other.
+
+如果所有者通过 Find My 应用程序请求其设备的位置，Apple 可以查明哪些所有者彼此物理接近。* 我们在图 6 中描绘了针对两个所有者的攻击。 从分别属于所有者 O1 和 O2 的丢失设备 L1 和 L2 接收广告，并将加密的位置报告发布到 Apple 的服务器。 由于 BLE 的通信范围有限，如果相应的位置报告是在相似的时间生成并由同一个发现者提交的，我们可以合理地假设 L1 和 L2 已经非常接近。 随后，O1 和 O2 通过打开 *Find My* 应用程序分别下载 L1 和 L2 的位置报告。 此时，Apple 可以推断出这两个通过 Apple ID 识别的所有者彼此接近。
+
+### Impact
+
+
+
+The presented attack could be harmful to protesters who put their phones into flight mode to stay anonymous and prevent their devices from showing up during a cell site analysis—which is precisely when the devices would start emitting OF advertisements. Law enforcement agencies could record all the advertised public keys at the demonstration site and ask Apple to provide the Apple IDs of the users that later requested location reports to deanonymize the participants. Such a collusion would be a combination of the proximity-based **(A2)** and service provider **(A4)** adversary models (cf. § 4).
+
+所提出的攻击可能对将手机置于飞行模式以保持匿名并防止其设备在蜂窝站点分析期间出现的抗议者有害——这正是设备开始发射 OF 广告的时间。 执法机构可以在演示现场记录所有宣传的公钥，并要求 Apple 提供用户的 Apple ID，这些用户后来要求提供位置报告以对参与者进行去匿名化。 这种共谋将是基于邻近的**(A2)** 和服务提供商**(A4)** 对手模型的组合（参见第 4 节）。
+
+
+
+### Proposed Mitigation
+
+
+
+There are two straightforward options to mitigate this attack: remove identifying information from either (1) finder devices or (2) owner devices. We assume that the authentication of the finder provides a form a remote attestation proving that the device is—in fact—a genuine Apple device allowed to upload location reports to Apple’s servers. In that case, option (1) is not feasible as the finder has to provide some verifiable information by design. However, we currently see no reason why owner devices have to authenticate to Apple’s servers and provide personally identifiable information, i.e., the Apple ID. We found that any Apple device can request arbitrary location reports, so the authentication appears to be a security-by-obscurity measure and only prevents everyone without access to an Apple device from accessing location reports. Therefore, we recommend option (2) as mitigation and disable authentication for download requests.
+
+有两个简单的选项可以减轻这种攻击：从 (1) 查找器设备或 (2) 所有者设备中删除识别信息。 我们假设发现者的身份验证提供了一种远程证明的形式，证明该设备实际上是真正的 Apple 设备，允许将位置报告上传到 Apple 的服务器。 在这种情况下，选项（1）是不可行的，因为发现者必须通过设计提供一些可验证的信息。 但是，我们目前认为所有者设备没有理由必须向 Apple 的服务器进行身份验证并提供个人身份信息，即 Apple ID。 我们发现任何 Apple 设备都可以请求任意位置报告，因此身份验证似乎是一种隐蔽的安全措施，只会阻止无法访问 Apple 设备的每个人访问位置报告。 因此，我们建议将选项 (2) 作为缓解措施并禁用下载请求的身份验证。
+
+
+
+## Unauthorized Access of Location History
+
+
+
+We discovered a vulnerability of the OF implementa- tion on macOS that allows a malicious application **(A1)** to effectively circumvent Apple’s restricted location API [5] and access the geolocation of all owner devices without user consent. Moreover, historical location reports can be abused to generate a unique mobility profile and identify the user, as we demonstrate in § 7.
+
+我们在 macOS 上发现了 OF 实现的漏洞，该漏洞允许恶意应用程序 **(A1)** 有效地绕过 Apple 的受限位置 API [5] 并在未经用户同意的情况下访问所有所有者设备的地理位置。 此外，正如我们在第 7 节中演示的那样，可以滥用历史位置报告来生成唯一的移动配置文件并识别用户。
+
+### Vulnerability
+
+§ 6 describes that the location privacy of lost devices is based on the assumption that the private part of the advertisement keys is only known to the owner de- vices. The advertisement keys change every 15 minutes and OF supports retrieving location reports from the last seven days, so there is a total of 672 advertise- ment keys per device, for which there exist potential location reports on Apple’s servers. In principle, all of these keys could be generated from the master beacon key (cf. § 6.1) whenever needed. However, Apple de- cided to cache the advertisement keys, most likely for performance reasons. During our reverse engineering ef- forts, we found that macOS stores these cached keys on disk in the directory /private/var/folders/\<Random> /com.apple.icloud.searchpartyd/Keys/\<DeviceId> /Primary/\<IdRange>.keys. The directory is readable by the local user and—in extension—by any application that runs with user privileges. On iOS, those cache files exist as well, but they are inaccessible for third-party applications due to iOS’s sandboxing mechanism.
+
+<img src="find_my_7_attack_flow.png">
+
+
+
+### Attack
+
+We describe the attack flow and explain our PoC imple- mentation, which leads to the attacker gaining access to the location history of the victim’s devices. In the following, we detail the operation of our two-part PoC attack. The steps are referring to Fig. 7.
+
+
+
+**Reading Private Keys (Steps 1–3).** The victim installs a non-sandboxed malicious application.7 When started, the malicious application runs with user priv- ileges and, therefore, has access to the key cache di- rectory. It can read the advertisement keys from disk (2) and then exfiltrate them to the attacker’s server (3). Apart from starting the application, this process requires no user interaction, i.e., no dialogs requesting disk access are displayed to the user.
+
+
+
+**Downloading Location Reports (Step 4).** The *at- tacker’s machine* essentially acts as an owner device (cf. § 6.4) but uses the victim’s keys as input for the HTTPS download request. To download the victim’s lo- cation reports, our PoC needs to access the attacker’s *anisette data* for authenticating the request to Apple’s servers. As we need to link private frameworks and ac- cess the anisette data in our implementation, the at- tacker’s macOS system needs to disable SIP and Ap- ple mobile file integrity (AMFI). Since this device is attacker-owned, this requirement does not limit the ap- plicability of the presented attack. SIP and AMFI are disabled by booting in the macOS recovery mode and running the following terminal commands.
+
+
+
+```cmd
+csrutil disable
+nvram boot-args="amfi_get_out_of_my_way=1"
+```
+
+**Decrypting Location Reports (Step 5).** In the fi- nal step, the adversary uses the victim’s private keys to decrypt the location reports.
+
+
+
+### Impact
+
+The attack essentially allows any third-party applica- tion to *bypass Apple’s Core Location API* [5] that en- forces user consent before an application can access the device’s location. Moreover, the attacker can access the location history of the past seven days of *all* the owner’s devices. The victim is only required to download and run the application but remains otherwise clueless about the breach. Our analysis has shown that the advertise- ment keys are precomputed for up to *nine* weeks into the future, which allows an adversary to continue download- ing new reports even after the victim has uninstalled the malicious application.
+
+
+
+Even though the location reports are not continu- ous, our evaluation in § 7 shows that it is easy to identify the user’s most visited places such as home and work- place. Furthermore, we show that the decrypted location reports can accurately track the victim’s movement of the last seven days.
+
+
+
+### Mitigation
+
+As a short-term mitigation, users can disable participat- ing in the OF network to prevent the attack. In addi- tion, we propose three long-term solutions to mitigate the attack: (1) encrypting all cached files on disk store the decryption key in the keychain, (2) restricting access to the cache directory via access control lists, (3) not caching the keys and computing them on-demand. In fact, macOS 10.15.7 includes a mitigation based on option (2), which moved the keys to a new directory that is protected via the system’s sandboxing mechanism.
+
+
+
+## Related Work
+
+We review other crowd-sourced location tracking systems and previous security and privacy analyses of Apple’s ecosystem.
+
+我们重新审视了其他crowd-sourced location tracking system与Apple的ecosystem之间的安全隐私分析。
+
+
+
+**Crowd-Sourced Location Tracking.** 
+
+Weller et al. [51] have studied the security and privacy of commer- cial Bluetooth tags (similar to Apple’s definition of *ac- cessories*) sold by multiple vendors. Many of the studied systems provide crowd-sourced location tracking similar to Apple’s OF, allowing users to discover lost devices by leveraging the finder capabilities of other devices. The study discovered several design and implementation is- sues, including but not limited to the use of plaintext lo- cation reports, unauthorized access to location reports, broken TLS implementations, and leaking user data. Based on their findings, Weller et al. [51] propose a novel privacy-preserving crowd-sourced location tracking sys- tem called *PrivateFind*. PrivateFind does not need user accounts and uses end-to-end encrypted location reports with a symmetric encryption key stored on the Blue- tooth finder during the initial setup. In their solution, a finder that discovers a lost Bluetooth tag sends its geolocation to the finder over Bluetooth. The lost de- vice encrypts the location with its symmetric key and returns the encrypted report. The finder then uploads the encrypted location report on behalf of the tag. An owner device that knows the symmetric key can then download and decrypt the location report.
+
+
+
+To the best of our knowledge, PrivateFind is the only other privacy-friendly offline device finding system next to OF. Both designs achieve similar privacy goals, such as preventing a third party from learning the loca- tion. The main difference is the way encrypted location reports are generated. OF employs public-key cryptog- raphy, which allows finder devices to generate a loca- tion report upon receiving a single Bluetooth advertise- ment. In PrivateFind, lost devices are actively involved in the generation, which leads to the following prac- tical issues: (1) Lost devices or tags drain their bat- teries quicker as they have to establish Bluetooth con- nections with other devices and perform cryptographic operations. This opens up the door for resource-exhaus- tion attacks where a powerful adversary issues an exces- sive number of encryption requests to the lost devices. (2) The lack of finder attestation would allow an at- tacker to upload fabricated reports as the lost device cannot verify the correctness of the provided location.
+
+
+
+**Apple’s Wireless Ecosystem Security and Privacy.**
+
+Previous work analyzed parts of Apple’s wireless ser- vices. Bai et al. [15] investigated the risks of using inse- cure multicast DNS (mDNS) service advertisements and showed that they have been able to spoof an AirDrop receiver identity to get unauthorized access to personal files. Stute, Kreitschmann, and Hollick [46] and Stute et al. [48] reverse engineered the complete AWDL and AirDrop protocols and demonstrated several attacks, including user tracking via AWDL, a DoS attack on AWDL, and a MitM attack on AirDrop. Martin et al. [36] extensively analyzed the content of the BLE adver- tisements for several Apple services. They found sev- eral privacy-compromising issues, including device fin- gerprinting and long-term device and activity tracking. Celosia and Cunche [21] extended this work and discov- ered new ways of tracking BLE devices such as Apple AirPods and demonstrated how to recover user email addresses and phone numbers from BLE advertisements sent by Apple’s Wi-Fi Password Sharing (PWS). Hein- rich et al. [30] found that AirDrop also leaks user phone numbers and email addresses and proposes a new pro- tocol based on private set intersection. Stute et al. [45] investigated the protocols involved in PWS and Apple’s Handoff and found vulnerabilities allowing device track- ing via Handoff advertisements, a MitM attack on PWS, and DoS attacks on both services. While the above works have analyzed other services, we leveraged their methodology for approaching our analysis and reverse engineering work of OF.
+
+
+
+## Conclusion
+
+Apple has turned its mobile ecosystem into a massive crowd-sourced location tracking system called OF. In this system, all iPhones act as so-called finder devices that report the location of lost devices to their respec- tive owners. Apple claims to implement OF in a privacy- preserving manner. In particular, location reports are inaccessible to Apple, finder identities are concealed, and BLE advertisements cannot be used to track the owner [35]. We have been the first to challenge these claims and provide a comprehensive security and pri- vacy analysis of OF.
+
+
+
+The good news is that we were unable to falsify Apple’s specific claims. However, we have found that OF provides a critical attack surface that seems to have been outside of Apple’s threat model. Firstly, the OF implementation on macOS allows a malicious appli- cation to effectively bypass Apple’s location API and retrieve the user’s location without their consent. By leveraging the historical reports, an attacker is able to identify the user’s most visited location with sub-20m accuracy. Secondly, we believe that Apple has yet to provide a good reason why owner devices need to au- thenticate when retrieving encrypted location reports as it allows Apple to correlate the locations of different Apple users.
+
+
+
+We were only able to publish our findings by inten- sively studying the OF system using reverse engineering, which is a very time-consuming process (we started ana- lyzing OF mid-2019). To protect user privacy, we believe that systems handling highly sensitive information such as OF need to be *openly and fully* specified to facilitate *timely* independent analyses. To this end, we urge man- ufacturers to provide not only partial [6] but complete documentation of their systems and release components as open-source software whenever possible, which is al- ready a best practice for cryptographic libraries [9].
+
+
+
+### Responsible Disclosure
+
+We disclosed the vulnerability in § 10 on July 2, 2020. On October 5, 2020, Apple informed us that macOS 10.15.7 provides a mitigation for the issue, which was assigned CVE-2020-9986. In addition, we informed Apple about the vulnerability in § 9 on October 16, 2020, and are currently waiting for feedback.
+
+
+
+### Availability
+
+We release the following open-source software artifacts as part of the Open Wireless Link project [47]: (1) The PoC implementation that can download and decrypt location reports, which we used for the exploit de- scribed in § 10 (github.com/seemoo-lab/openhaystack). (2) The experimental raw data and evalua- tion scripts to reproduce the results in § 7 (github.com/seemoo-lab/offline-finding-evaluation).
+
+
+
+### Acknowledgments
+
+We thank our anonymous reviewers and our shepherd Santiago Torres-Arias for their invaluable feedback. We thank Fontawesome for the vector graphics and Stamen for the map tiles used in our figures. This work has been funded by the LOEWE initiative (Hesse, Germany) within the emergenCITY center and by the German Federal Ministry of Education and Research and the Hessen State Ministry for Higher Education, Research and the Arts within their joint support of the National Research Center for Applied Cybersecurity ATHENE.
