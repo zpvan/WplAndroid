@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name="com.knox.productflavors.MainActivity2"
+            android:exported="false"
+
+            />
+    </application>
+</manifest>
