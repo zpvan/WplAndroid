@@ -9,6 +9,8 @@ import java.util.Map;
 
 public class Test638 {
 
+	Map<List<Integer>, Integer> mem = new HashMap<>();
+
 	@Test
 	public void test() {
 
@@ -24,7 +26,7 @@ public class Test638 {
 		List<List<Integer>> realSpecial = new ArrayList<>();
 		for (List<Integer> sp : special) {
 			int totalPrice = 0;
-			for (int i = 0; i< n; i++) {
+			for (int i = 0; i < n; i++) {
 				// 记录大礼包里边的商品如果用原价买, 要多少钱
 				totalPrice += sp.get(i) * price.get(i);
 			}
@@ -35,20 +37,19 @@ public class Test638 {
 		return _dfs(price, realSpecial, needs, n);
 	}
 
-	Map<List<Integer>, Integer> mem = new HashMap<>();
 	private int _dfs(List<Integer> price,
 					 List<List<Integer>> special,
 					 List<Integer> needs,
 					 int n) {
-    	if (!mem.containsKey(needs)) {
-    		int minPrice = 0;
-    		for (int i = 0; i < n; i++) {
-    			// 全部按原价买
-    			minPrice += needs.get(i) * price.get(i);
+		if (!mem.containsKey(needs)) {
+			int minPrice = 0;
+			for (int i = 0; i < n; i++) {
+				// 全部按原价买
+				minPrice += needs.get(i) * price.get(i);
 			}
-    		for (List<Integer> sp : special) {
+			for (List<Integer> sp : special) {
 				List<Integer> nextNeeds = new ArrayList<>();
-    			// 该大礼包的总价
+				// 该大礼包的总价
 				int specialPrice = sp.get(n);
 				for (int i = 0; i < n; i++) {
 					if (sp.get(i) > needs.get(i)) {
@@ -62,8 +63,8 @@ public class Test638 {
 					minPrice = Math.min(minPrice, _dfs(price, special, nextNeeds, n) + sp.get(n));
 				}
 			}
-    		mem.put(needs, minPrice);
+			mem.put(needs, minPrice);
 		}
-    	return mem.get(needs);
+		return mem.get(needs);
 	}
 }

@@ -11,7 +11,7 @@ public class TTest4 {
 	@Test
 	public void test() {
 		long start = System.currentTimeMillis();
-    	System.out.println("sum: " + numWays(25) + "\n cost: " + (System.currentTimeMillis() - start));
+		System.out.println("sum: " + numWays(25) + "\n cost: " + (System.currentTimeMillis() - start));
 	}
 
 	private int numWays(int n) {

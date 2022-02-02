@@ -6,7 +6,7 @@ public class Test233 {
 
 	@Test
 	public void test() {
-    	System.err.println("ans: " + maxPower("abbcccddddeeeeedcba"));
+		System.err.println("ans: " + maxPower("abbcccddddeeeeedcba"));
 	}
 
 	public int maxPower(String s) {

@@ -11,8 +11,8 @@ public class Test506 {
 
 	@Test
 	public void test() {
-		int[] score = new int[] {10,3,8,9,4};
-    	System.err.println("ans: " + Arrays.toString(findRelativeRanks(score)));
+		int[] score = new int[]{10, 3, 8, 9, 4};
+		System.err.println("ans: " + Arrays.toString(findRelativeRanks(score)));
 	}
 
 	public String[] findRelativeRanks(int[] score) {

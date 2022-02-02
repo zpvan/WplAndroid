@@ -8,7 +8,7 @@ public class Test334 {
 
 	@Test
 	public void test() {
-		System.err.println("increasingTriplet: " + increasingTriplet(new int[]{2,3,9,7,6}));
+		System.err.println("increasingTriplet: " + increasingTriplet(new int[]{2, 3, 9, 7, 6}));
 	}
 
 	public boolean increasingTriplet(int[] nums) {
