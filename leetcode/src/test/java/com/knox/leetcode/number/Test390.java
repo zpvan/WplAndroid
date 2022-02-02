@@ -10,18 +10,15 @@ public class Test390 {
 	}
 
 	public int lastRemaining(int n) {
-		int a1 = 1;
-		int k = 0, cnt = n, step = 1;
-		while (cnt > 1) {
-			if (k % 2 == 0) { // 正向
-				a1 = a1 + step;
-			} else { // 反向
-				a1 = (cnt % 2 == 0) ? a1 : a1 + step;
-			}
-			k++;
-			cnt = cnt >> 1;
-			step = step << 1;
+		// 每轮剩余的数字都是等差数列, 且step=2^(round-1), remain=(n/2^(round-1)), round计算轮数
+		int ans = 1, step = 1, remain = n, round = 1;
+		while (remain > 1) {
+			if ((round & 1) != 0) ans = ans + step; // 左向右
+			else ans = ((remain & 1) == 0) ? ans : ans + step; // 右向左; 偶数?奇数
+			round++;
+			step <<= 1;
+			remain >>= 1;
 		}
-		return a1;
+		return ans;
 	}
 }
