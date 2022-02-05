@@ -11,11 +11,6 @@ import java.util.Set;
 
 public class Test773 {
 
-	@Test
-	public void test() {
-
-	}
-
 	/**
 	 * [0+0, 0+1, 0+2]
 	 * [3+0, 3+1, 3+2]
@@ -28,6 +23,11 @@ public class Test773 {
 	 * reachable[3+2] = {0+2, 3+1}      = {2, 4}
 	 */
 	int[][] reachable = {{1, 3}, {0, 2, 4}, {1, 5}, {0, 4}, {1, 3, 5}, {2, 4}};
+
+	@Test
+	public void test() {
+
+	}
 
 	private List<String> moveOneStep(String curr) {
 		int zeroPos = curr.indexOf("0");
@@ -48,7 +48,6 @@ public class Test773 {
 	}
 
 	/**
-	 *
 	 * @param board
 	 * @return
 	 */

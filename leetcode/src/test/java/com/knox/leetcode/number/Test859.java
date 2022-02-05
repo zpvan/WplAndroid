@@ -11,7 +11,7 @@ public class Test859 {
 	public void test() {
 		String a = "aaaaaaabc";
 		String b = "aaaaaaacb";
-    	System.err.println("buddyStrings ans: " + buddyStrings(a, b));
+		System.err.println("buddyStrings ans: " + buddyStrings(a, b));
 	}
 
 	public boolean buddyStrings(String s, String goal) {

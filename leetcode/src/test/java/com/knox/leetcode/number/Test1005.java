@@ -10,9 +10,9 @@ public class Test1005 {
 
 	@Test
 	public void test() {
-		int[] nums = new int[] {2,-3,-1,5,-4};
+		int[] nums = new int[]{2, -3, -1, 5, -4};
 		int k = 2;
-    	System.err.println("ans: " + largestSumAfterKNegations(nums, k));
+		System.err.println("ans: " + largestSumAfterKNegations(nums, k));
 	}
 
 	public int largestSumAfterKNegations(int[] nums, int k) {

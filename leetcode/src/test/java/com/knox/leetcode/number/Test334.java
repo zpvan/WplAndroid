@@ -34,4 +34,17 @@ public class Test334 {
 		System.err.println("ans: " + ans);
 		return ans >= 3;
 	}
+
+	public boolean increasingTriplet2(int[] nums) {
+		int n = nums.length;
+		long[] f = new long[3];
+		f[1] = f[2] = (int)1e19;
+		for (int i = 0; i < n; i++) {
+			int t = nums[i];
+			if (t > f[2]) return true;
+			if (t <= f[1]) f[1] = t;
+			else f[2] = t;
+		}
+		return false;
+	}
 }
