@@ -35,12 +35,10 @@ public class Test1765 {
 			for (int[] dir : dirs) {
 				int x = dx + dir[0], y = dy + dir[1];
 				if (x < 0 || x >= m || y < 0 || y >= n) continue;
-				if (ans[x][y] == -1) {
-					map.put(x * n + y, high + 1);
-					queue.addLast(new int[]{x, y});
-					ans[x][y] = high + 1;
-				}
-
+				if (ans[x][y] != -1) continue;
+				map.put(x * n + y, high + 1);
+				queue.addLast(new int[]{x, y});
+				ans[x][y] = high + 1;
 			}
 		}
 
