@@ -20,7 +20,7 @@ public class Test1020 {
 	}
 
 	private int numEnclavesWithDisjointDFS(int[][] grid) {
-		
+
 		return 0;
 	}
 
