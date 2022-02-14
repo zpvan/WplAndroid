@@ -8,7 +8,7 @@ public class Test1189 {
 		for (char c : text.toCharArray()) {
 			count[c - 'a']++;
 		}
-		Math.min(count[1], // b
+		return Math.min(count[1], // b
 				Math.min(count[0], // a
 						Math.min(count[11] / 2, // l
 								Math.min(count[14] / 2, // o
