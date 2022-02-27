@@ -23,6 +23,7 @@
       <module name="WplAndroid.pattern" target="11" />
       <module name="WplAndroid.player" target="11" />
       <module name="WplAndroid.plugin" target="11" />
+      <module name="WplAndroid.pluginresource" target="11" />
       <module name="WplAndroid.productflavors" target="11" />
       <module name="WplAndroid.reverse" target="11" />
       <module name="WplAndroid.rpc" target="11" />
