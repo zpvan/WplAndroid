@@ -4,6 +4,8 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -26,10 +28,74 @@ public class Test743 {
 	 */
 	public int networkDelayTime(int[][] times, int n, int k) {
 		int ans = 0;
-//		ans = FloydPlusMatrix(times, n, k);
+		ans = FloydPlusMatrix(times, n, k);
 //		ans = SimpleDijkstraPlusMatrix(times, n, k);
 //		ans = HeapDijkstraPlusArray(times, n, k);
-		ans = BellmanFordPlusArray(times, n, k);
+//		ans = BellmanFordPlusArray(times, n, k);
+
+//		ans = dijkstraPlusArray2(times, n, k);
+		return ans;
+	}
+
+	private int dijkstraPlusArray2(int[][] times, int n, int k) {
+		// 邻接表 + dijkstra
+		/**
+		 * 数组的索引是 节点（仅起点），元素是 边的链表。
+		 */
+		List<Edge>[] edges = new List[n + 1];
+		for (int i = 1; i <= n; i++) {
+			edges[i] = new LinkedList<>();
+		}
+		System.out.println("1,edges: " + Arrays.toString(edges));
+		for (int[] t : times) {
+			System.out.println("t: " + Arrays.toString(t));
+			/**
+			 * t[0] 起点
+			 * t[1] 终点
+			 * t[2] 权重
+			 */
+			edges[t[0]].add(new Edge(t[0], t[1], t[2]));
+		}
+		System.out.println("2,edges: " + Arrays.toString(edges));
+
+		// 记录起始点到每个点的距离
+		int[] vertexes = new int[n + 1];
+		Arrays.fill(vertexes, Integer.MAX_VALUE);
+		vertexes[k] = 0;
+
+		// 小顶堆 + Dijkstra
+		PriorityQueue<int[]> heap = new PriorityQueue<>(new Comparator<int[]>() {
+			@Override
+			public int compare(int[] o1, int[] o2) {
+				return o1[1] - o2[1];
+			}
+		});
+		heap.add(new int[]{k, 0}); // 从起始点开始走
+		// 记录走过的点
+		boolean[] visited = new boolean[n + 1];
+		while (!heap.isEmpty()) {
+			int[] poll = heap.poll();
+			int s = poll[0], w = poll[1];
+			// 从 s 点开始走, 如果 s 没有曾经走过
+			if (visited[s]) continue;
+			visited[s] = true;
+			for (Edge e : edges[s]) {
+				if ((e.c + w) < vertexes[e.b]) {
+					// 如果达到 点e.b 的距离更小，则插入 点e.b
+					heap.add(new int[]{e.b, e.c + w});
+					System.out.println(s + " arrive " + e.b + ", w: (" + e.c + " + " + w + ")");
+					vertexes[e.b] = e.c + w;
+				}
+			}
+		}
+
+		System.out.println("vertexes: " + Arrays.toString(vertexes));
+
+		int ans = 0;
+		for (int i = 1; i <= n; i++) {
+			if (vertexes[i] == Integer.MAX_VALUE) return -1;
+			ans = Math.max(ans, vertexes[i]);
+		}
 		return ans;
 	}
 
