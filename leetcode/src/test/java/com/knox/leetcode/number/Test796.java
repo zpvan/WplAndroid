@@ -11,7 +11,7 @@ public class Test796 {
 
    public boolean rotateString(String s, String goal) {
       if (s.length() != goal.length()) return false;
-      
+
       int anchor = goal.charAt(0);
       for (int i = 0; i < s.length(); i++) {
          if (s.charAt(i) != anchor) continue;
