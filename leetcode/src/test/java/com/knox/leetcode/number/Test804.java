@@ -4,9 +4,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Test804 {
-	
+
 	public int uniqueMorseRepresentations(String[] words) {
-		String[] MorseCode = new String[] {
+		String[] MorseCode = new String[]{
 				".-", "-...", "-.-.", "-..",
 				".", "..-.", "--.", "....",
 				"..", ".---", "-.-", ".-..",
