@@ -16,10 +16,20 @@ public class Test1305 {
 		List<Integer> ans = new ArrayList<>();
 		int p1 = 0, p2 = 0;
 		while (p1 < l1.size() && p2 < l2.size()) {
-			
+			if (l1.get(p1) < l2.get(p2)) {
+				ans.add(l1.get(p1++));
+			} else {
+				ans.add(l2.get(p2++));
+			}
+		}
+		while (p1 < l1.size()) {
+			ans.add(l1.get(p1++));
+		}
+		while (p2 < l2.size()) {
+			ans.add(l2.get(p2++));
 		}
 
-		return l1;
+		return ans;
 	}
 
 	private void inOrder(TreeNode node, List<Integer> ans) {
