@@ -6,7 +6,8 @@ public class Test5 {
 
 	@Test
 	public void test() {
-
+		System.out.println("ans: " + longestPalindrome("babad"));
+		System.out.println("ans: " + longestPalindrome("cbbd"));
 	}
 
 	public String longestPalindrome(String s) {

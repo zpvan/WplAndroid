@@ -1,6 +1,14 @@
 package com.knox.leetcode.number;
 
-class Test151 {
+import org.junit.Test;
+
+public class Test151 {
+
+	@Test
+	public void test() {
+		System.out.println("ans: " + reverseWords("the sky is blue"));
+	}
+
 	public String reverseWords(String s) {
 		String[] ss = s.split(" ");
 		int l = 0, r = ss.length - 1;

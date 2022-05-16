@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class Test22 {
+
 	public List<String> generateParenthesis(int n) {
 		List<String> ans = new ArrayList<>();
 		dfs(n, n, "", ans);
