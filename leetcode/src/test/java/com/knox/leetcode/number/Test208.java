@@ -16,7 +16,7 @@ public class Test208 {
 			Trie curr = this;
 			for (int i = 0; i < chars.length; i++) {
 				if (curr.child[chars[i] - 'a'] == null) {
-                   curr.child[chars[i] - 'a'] = new Trie();
+					curr.child[chars[i] - 'a'] = new Trie();
 				}
 				curr = curr.child[chars[i] - 'a'];
 				if (i == chars.length - 1) {
@@ -26,9 +26,8 @@ public class Test208 {
 		}
 
 		public boolean search(String word) {
-			char[] chars = word.toCharArray();
 			Trie curr = this;
-			for (char aChar : chars) {
+			for (char aChar : word.toCharArray()) {
 				if (curr.child[aChar - 'a'] == null) {
 					return false;
 				}
@@ -38,7 +37,14 @@ public class Test208 {
 		}
 
 		public boolean startsWith(String prefix) {
-
+			Trie curr = this;
+			for (char aChar : prefix.toCharArray()) {
+				if (curr.child[aChar - 'a'] == null) {
+					return false;
+				}
+				curr = curr.child[aChar - 'a'];
+			}
+			return true;
 		}
 	}
 }
