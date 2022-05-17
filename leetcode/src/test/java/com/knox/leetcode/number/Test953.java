@@ -2,6 +2,7 @@ package com.knox.leetcode.number;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,9 +26,7 @@ public class Test953 {
 			}
 			return o1.length() - o2.length();
 		});
-		for (String word : words) {
-			pq.add(word);
-		}
+		pq.addAll(Arrays.asList(words));
 //		System.out.println("===begin===");
 //		while (pq.size() > 0) {
 //			System.out.println("debug-top: " + pq.poll());
