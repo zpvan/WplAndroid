@@ -20,8 +20,7 @@ public class Test468 {
 	}
 
 	private boolean isIPv4(String queryIP) {
-		System.err.println(queryIP + ", fi: " + queryIP.indexOf(".") + ", li: " + queryIP.lastIndexOf(".") + ", length: " + queryIP.length());
-		if (queryIP.indexOf("\\.") == 0 || queryIP.lastIndexOf("\\.") == queryIP.length() - 1)
+		if (queryIP.indexOf(".") == 0 || queryIP.lastIndexOf(".") == queryIP.length() - 1)
 			return false;
 		String[] ipv4 = queryIP.split("\\.");
 		if (ipv4.length != 4) return false;

@@ -3,7 +3,7 @@ package com.knox.leetcode.offer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Test0406 {
+class Test0406 {
 
 	public TreeNode inorderSuccessor(TreeNode root, TreeNode p) {
 		List<TreeNode> list = new ArrayList<>();

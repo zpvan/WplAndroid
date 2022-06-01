@@ -1,7 +1,7 @@
 package com.knox.leetcode.number;
 
 public class Test101 {
-	public class TreeNode {
+	private class TreeNode {
 		int val;
 		TreeNode left;
 		TreeNode right;
