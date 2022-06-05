@@ -3,9 +3,10 @@ package com.knox.leetcode.number;
 class Test450 {
 
 
-	public TreeNode deleteNode(TreeNode root, int key) {
+	public TreeNode deleteNode2(TreeNode root, int key) {
 		if (root == null) return null;
 
+		TreeNode prev = null;
 		TreeNode curr = root;
 		while (curr != null) {
 			if (curr.val == key) {
@@ -43,13 +44,55 @@ class Test450 {
 						curr.val = t.val;
 						p.right = null;
 					}
+				} else {
+					// 删掉
+					if (prev == null) return null;
+					if (prev.val > key) prev.left = null;
+					if (prev.val < key) prev.right = null;
 				}
+				break;
 			} else {
-				if (key < curr.val) curr = curr.left;
-				if (key > curr.val) curr = curr.right;
+				prev = curr;
+				int cval = curr.val;
+				if (key < cval) curr = curr.left;
+				if (key > cval) curr = curr.right;
 			}
 		}
 
+		return root;
+	}
+
+	public TreeNode deleteNode(TreeNode root, int key) {
+		if (root == null) {
+			return null;
+		}
+		if (root.val > key) {
+			root.left = deleteNode(root.left, key);
+			return root;
+		}
+		if (root.val < key) {
+			root.right = deleteNode(root.right, key);
+			return root;
+		}
+		if (root.val == key) {
+			if (root.left == null && root.right == null) {
+				return null;
+			}
+			if (root.right == null) {
+				return root.left;
+			}
+			if (root.left == null) {
+				return root.right;
+			}
+			TreeNode successor = root.right;
+			while (successor.left != null) {
+				successor = successor.left;
+			}
+			root.right = deleteNode(root.right, successor.val);
+			successor.right = root.right;
+			successor.left = root.left;
+			return successor;
+		}
 		return root;
 	}
 
