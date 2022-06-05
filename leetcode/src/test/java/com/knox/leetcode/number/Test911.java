@@ -40,68 +40,6 @@ public class Test911 {
 		System.err.println("q(78)=" + topVotedCandidate.q(78));
 		System.err.println("q(43)=" + topVotedCandidate.q(43));
 	}
-}
-
-class TopVotedCandidate {
-
-	// map<k=时间点, v=最高票数的候选人编号>
-	private Map<Integer, Integer> map = new HashMap<>();
-	// 存储times
-	private int[] times = null;
-	public TopVotedCandidate(int[] persons, int[] times) {
-		// map<k=候选人编号, v=候选人的目前选票>
-		Map<Integer, Integer> tmpMap = new HashMap<>();
-		// 目前最高选票的候选人编号 及 选票
-		MyPair<Integer, Integer> now = new MyPair<>(-1, 0);
-		// 循环N次
-		for (int i = 0; i < times.length; i++) {
-			int cd = persons[i];
-			// 拿出候选人cd目前的选票结果,并且+1
-			Integer voteOfCd = tmpMap.getOrDefault(cd, 0);
-			voteOfCd++;
-			tmpMap.put(cd, voteOfCd);
-			// 判断是否要切换最高得票数的候选人
-			if (voteOfCd >= now.value) {
-				now.key = cd;
-				now.value = voteOfCd;
-			}
-
-			System.err.println("put(key=" + times[i] + ",value=" + now.key + ")");
-			map.put(times[i], now.key);
-			this.times = Arrays.copyOf(times, times.length);
-		}
-	}
-
-	public int q(int t) {
-		int key = t > times[times.length - 1] ? times.length - 1 : find(t);
-		System.err.println("t=" + t + ",key=" + key);
-		return map.get(times[key]).intValue();
-	}
-
-	private int find(int t) {
-		// 找到 <=t 的最大 time
-		int l = 0;
-		int r = times.length - 1;
-		int key = -1;
-		while (l <= r) {
-			int mid = (l + r) / 2;
-			if (times[mid] == t) {
-				key = mid;
-				break;
-			}
-			if (times[mid] > t && mid > 0 && times[mid - 1] < t) {
-				key = mid - 1;
-				break;
-			}
-			if (times[mid] > t) {
-				r = mid - 1;
-			} else {
-				l = mid + 1;
-			}
-			continue;
-		}
-		return key;
-	}
 
 	private static class MyPair<K, V> {
 		public K key;
@@ -112,4 +50,69 @@ class TopVotedCandidate {
 			value = v;
 		}
 	}
+
+	class TopVotedCandidate {
+
+		// map<k=时间点, v=最高票数的候选人编号>
+		private Map<Integer, Integer> map = new HashMap<>();
+		// 存储times
+		private int[] times = null;
+
+		public TopVotedCandidate(int[] persons, int[] times) {
+			// map<k=候选人编号, v=候选人的目前选票>
+			Map<Integer, Integer> tmpMap = new HashMap<>();
+			// 目前最高选票的候选人编号 及 选票
+			MyPair<Integer, Integer> now = new MyPair<>(-1, 0);
+			// 循环N次
+			for (int i = 0; i < times.length; i++) {
+				int cd = persons[i];
+				// 拿出候选人cd目前的选票结果,并且+1
+				Integer voteOfCd = tmpMap.getOrDefault(cd, 0);
+				voteOfCd++;
+				tmpMap.put(cd, voteOfCd);
+				// 判断是否要切换最高得票数的候选人
+				if (voteOfCd >= now.value) {
+					now.key = cd;
+					now.value = voteOfCd;
+				}
+
+				System.err.println("put(key=" + times[i] + ",value=" + now.key + ")");
+				map.put(times[i], now.key);
+				this.times = Arrays.copyOf(times, times.length);
+			}
+		}
+
+		public int q(int t) {
+			int key = t > times[times.length - 1] ? times.length - 1 : find(t);
+			System.err.println("t=" + t + ",key=" + key);
+			return map.get(times[key]).intValue();
+		}
+
+		private int find(int t) {
+			// 找到 <=t 的最大 time
+			int l = 0;
+			int r = times.length - 1;
+			int key = -1;
+			while (l <= r) {
+				int mid = (l + r) / 2;
+				if (times[mid] == t) {
+					key = mid;
+					break;
+				}
+				if (times[mid] > t && mid > 0 && times[mid - 1] < t) {
+					key = mid - 1;
+					break;
+				}
+				if (times[mid] > t) {
+					r = mid - 1;
+				} else {
+					l = mid + 1;
+				}
+				continue;
+			}
+			return key;
+		}
+	}
 }
+
+
