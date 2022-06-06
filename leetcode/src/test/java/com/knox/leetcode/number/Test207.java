@@ -61,17 +61,39 @@ public class Test207 {
 		}
 
 		// Kahn 算法
-		topoSortedByKahn(numCourses, prerequisites, g);
-
-
+		return topoSortedByKahn(g);
 	}
 
-	private void topoSortedByKahn(int v, int[][] prerequisites, Graph g) {
+	private boolean topoSortedByKahn(Graph g) {
 		// 统计每个顶点的入度
-		int[] inDegree = new int[v];
-		for (int i = 0; i < v; i++) {
-			
+		int[] inDegree = new int[g.v];
+		for (int i = 0; i < g.v; i++) {
+			for (int j = 0; j < g.adj[i].size(); ++j) {
+				int w = g.adj[i].get(j); // i->w
+				inDegree[w]++;
+			}
 		}
+		boolean[] visited = new boolean[g.v];
+		// bfs
+		LinkedList<Integer> queue = new LinkedList<>();
+		for (int i = 0; i < g.v; ++i) {
+			if (inDegree[i] == 0)
+				queue.add(i);
+		}
+		while (!queue.isEmpty()) {
+			int i = queue.remove();
+			visited[i] = true;
+			for (int j = 0; j < g.adj[i].size(); ++j) {
+				int k = g.adj[i].get(j);
+				inDegree[k]--;
+				if (inDegree[k] == 0)
+					queue.add(k);
+			}
+		}
+		for (int i = 0; i < g.v; i++) {
+			if (!visited[i]) return false;
+		}
+		return true;
 	}
 
 	private class Graph {
