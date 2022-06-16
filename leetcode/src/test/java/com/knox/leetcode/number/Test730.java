@@ -9,6 +9,7 @@ public class Test730 {
 
 	@Test
 	public void test() {
+		// NG
 		System.out.println("ans: " + countPalindromicSubsequences("bccb"));
 	}
 
