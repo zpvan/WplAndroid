@@ -20,7 +20,7 @@ public class Test1089 {
 		int[] _arr = arr.clone();
 		for (int i = 0, j = 0; i < arr.length && j < arr.length; i++) {
 			arr[j++] = _arr[i];
-			if (_arr[i] == 0) {
+			if (_arr[i] == 0 && j < arr.length) {
 				arr[j++] = 0;
 			}
 		}
