@@ -35,8 +35,21 @@ public class Test0412 {
 	}
 
 	public int pathSum(TreeNode root, int sum) {
+		if (root == null) return 0;
 		// dfs
-		
+		int ans = dfs(root, sum);
+		ans += pathSum(root.left, sum);
+		ans += pathSum(root.right, sum);
+		return ans;
+	}
+
+	private int dfs(TreeNode root, int sum) {
+		if (root == null) return 0;
+		int ans = 0;
+		if (root.val == sum) ans++;
+		ans += dfs(root.left, sum - root.val);
+		ans += dfs(root.right, sum - root.val);
+		return ans;
 	}
 
 	private class TreeNode {

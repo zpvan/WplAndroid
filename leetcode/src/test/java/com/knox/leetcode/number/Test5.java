@@ -4,10 +4,49 @@ import org.junit.Test;
 
 public class Test5 {
 
+	int maxLen = 1;
+	int left, right = 0;
+
 	@Test
 	public void test() {
 		System.out.println("ans: " + longestPalindrome("babad"));
 		System.out.println("ans: " + longestPalindrome("cbbd"));
+	}
+
+	public String longestPalindrome3(String s) {
+		/**
+		 * 动态规划
+		 * boolean[][] dp 定义二维的状态转移
+		 * dp[i][j] = true 表示从i到j是回文子串
+		 * dp[i][j] = false 表示从i到j不是回文子串
+		 */
+		int n = s.length();
+		boolean[][] dp = new boolean[n][n];
+		// 初始化
+		for (int i = 0; i < n; i++) {
+			dp[i][i] = true;
+		}
+		// 动态规划
+		for (int i = 1; i < n; i++) {
+			palindrome(i - 1, i, dp, s.toCharArray());
+			palindrome(i - 1, i + 1, dp, s.toCharArray());
+		}
+		return s.substring(left, right);
+	}
+
+	private void palindrome(int l, int r, boolean[][] dp, char[] cs) {
+		if (l < 0 || r >= cs.length) return;
+		if (cs[l] != cs[r]) return;
+		if (dp[l][r]) return;
+		if (l + 1 == r || dp[l + 1][r - 1]) {
+			dp[l][r] = true;
+			if (maxLen < r - l + 1) {
+				maxLen = r - l + 1;
+				left = l;
+				right = r;
+			}
+			palindrome(l - 1, r + 1, dp, cs);
+		}
 	}
 
 	public String longestPalindrome(String s) {
