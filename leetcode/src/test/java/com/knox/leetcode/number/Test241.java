@@ -34,7 +34,7 @@ public class Test241 {
 		if (ans.isEmpty()) {
 			int cur = 0;
 			for (int i = l; i <= r; i++) {
-				
+				cur = cur * 10 + (cs[i] - '0');
 			}
 			ans.add(cur);
 		}
