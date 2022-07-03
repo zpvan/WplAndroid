@@ -16,9 +16,6 @@
             <option value="$PROJECT_DIR$/aop" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/architecture" />
-            <option value="$PROJECT_DIR$/autoadapter" />
-            <option value="$PROJECT_DIR$/autoadapter-annotations" />
-            <option value="$PROJECT_DIR$/autoadapter-processor" />
             <option value="$PROJECT_DIR$/bytecode" />
             <option value="$PROJECT_DIR$/concurrency" />
             <option value="$PROJECT_DIR$/customview" />

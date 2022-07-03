@@ -1,34 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <bytecodeTargetLevel target="1.8">
-      <module name="WplAndroid.advancealgo" target="16" />
-      <module name="WplAndroid.aop" target="16" />
-      <module name="WplAndroid.app" target="16" />
-      <module name="WplAndroid.architecture" target="16" />
+    <bytecodeTargetLevel target="16">
       <module name="WplAndroid.autoadapter" target="16" />
-      <module name="WplAndroid.bytecode" target="16" />
-      <module name="WplAndroid.concurrency" target="16" />
-      <module name="WplAndroid.customview" target="16" />
-      <module name="WplAndroid.hotfix" target="16" />
-      <module name="WplAndroid.http" target="16" />
-      <module name="WplAndroid.jobscheduler" target="16" />
-      <module name="WplAndroid.jvm" target="16" />
-      <module name="WplAndroid.ktaboutme" target="16" />
-      <module name="WplAndroid.kthelloworld" target="16" />
-      <module name="WplAndroid.leakcanary" target="16" />
-      <module name="WplAndroid.leetcode" target="16" />
-      <module name="WplAndroid.memory" target="16" />
-      <module name="WplAndroid.myaspectj" target="16" />
-      <module name="WplAndroid.pattern" target="16" />
-      <module name="WplAndroid.player" target="16" />
-      <module name="WplAndroid.plugin" target="16" />
       <module name="WplAndroid.pluginresource" target="11" />
-      <module name="WplAndroid.productflavors" target="16" />
-      <module name="WplAndroid.reverse" target="16" />
-      <module name="WplAndroid.rpc" target="16" />
-      <module name="WplAndroid.security" target="16" />
-      <module name="WplAndroid.wan" target="16" />
     </bytecodeTargetLevel>
   </component>
 </project>
