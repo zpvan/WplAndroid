@@ -34,6 +34,7 @@ public class Test556 {
 
 		// 从位置i后的数开始, 从小到大排序, 由于原本是从大到小排序, 所以reverse即可
 		reverse(nums, i + 1);
+
 		long ans = Long.parseLong(new String(nums));
 		return ans > Integer.MAX_VALUE ? -1 : (int) ans;
 	}
