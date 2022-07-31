@@ -37,4 +37,21 @@ public class Test2024 {
 		}
 		return ans;
 	}
+
+	/**
+	 * sliding-window 滑动窗口
+	 * 一般有会有左右指针来控制窗口，窗口是"某种维度"的固定长度，譬如l到r之间"1"的个数固定
+	 */
+	public int cal2(String answerKey, int k, char w) {
+		char[] chars = answerKey.toCharArray();
+		int ans = 0;
+		for (int l = 0, r = 0, c = 0; r < chars.length; r++) {
+			c += chars[r] == w ? 0 : 1;
+			while (c > k) {
+				c -= chars[l++] == w ? 0 : 1;
+			}
+			ans = Math.max(ans, r - l + 1);
+		}
+		return ans;
+	}
 }
